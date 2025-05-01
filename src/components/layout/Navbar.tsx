@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Upload } from 'lucide-react';
+import { Search, Upload, Crown, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Navbar = () => {
   const { user, signOut, isLoading } = useAuth();
@@ -48,6 +56,20 @@ const Navbar = () => {
       setIsProUser(false);
     }
   }, [user, isLoading]);
+
+  // Get initials from email for avatar fallback
+  const getInitials = (email) => {
+    if (!email) return "U";
+    return email.charAt(0).toUpperCase();
+  };
+
+  // Generate Gravatar URL
+  const getGravatarUrl = (email) => {
+    if (!email) return "";
+    // MD5 hash of email is required for Gravatar, but we'll use a placeholder
+    // In a real app, you would implement an MD5 hash function
+    return `https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y`;
+  };
   
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
@@ -87,7 +109,9 @@ const Navbar = () => {
         </div>
         
         <nav className="flex items-center gap-4">
-          <Link to="/pricing" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Pricing</Link>
+          {!isProUser && (
+            <Link to="/pricing" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Pricing</Link>
+          )}
           
           {!isLoading && (
             user ? (
@@ -114,16 +138,37 @@ const Navbar = () => {
                   </TooltipProvider>
                 )}
                 
-                <span className="text-sm font-medium">
-                  {user.email}
-                </span>
-                <Button 
-                  variant="ghost"
-                  onClick={signOut}
-                  className="text-sm font-medium hover:text-skreenlab-blue transition-colors"
-                >
-                  Sign Out
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="relative cursor-pointer">
+                      {isProUser && (
+                        <div className="absolute -top-1 -left-1 z-10">
+                          <Crown className="h-4 w-4 text-yellow-500" />
+                        </div>
+                      )}
+                      <Avatar>
+                        <AvatarImage src={getGravatarUrl(user.email)} alt="User profile" />
+                        <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+                      </Avatar>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <div className="px-2 py-1.5 text-sm font-semibold">{isProUser ? 'Pro User' : 'Free User'}</div>
+                    <DropdownMenuSeparator />
+                    {!isProUser && (
+                      <Link to="/pricing">
+                        <DropdownMenuItem>
+                          <Crown className="mr-2 h-4 w-4 text-yellow-500" />
+                          <span>Upgrade to Pro</span>
+                        </DropdownMenuItem>
+                      </Link>
+                    )}
+                    <DropdownMenuItem onClick={signOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign Out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <>
@@ -139,3 +184,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+

@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -24,6 +23,7 @@ export type UploadScreenshot = {
 const Upload = () => {
   const { user, session, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState(1);
   const [isProUser, setIsProUser] = useState(false);
   const [appStoreLink, setAppStoreLink] = useState('');
@@ -33,13 +33,23 @@ const Upload = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAuthChecked, setHasAuthChecked] = useState(false);
   const authCheckPerformedRef = useRef(false);
+  const initialPathSaved = useRef(false);
   
   // Store the initial URL in sessionStorage to return to after tab changes
   useEffect(() => {
-    if (!sessionStorage.getItem('currentUploadPath')) {
-      sessionStorage.setItem('currentUploadPath', window.location.pathname);
+    if (!initialPathSaved.current) {
+      sessionStorage.setItem('currentUploadPath', '/upload');
+      initialPathSaved.current = true;
     }
   }, []);
+
+  // Restore user to upload page when returning from other tabs
+  useEffect(() => {
+    const storedPath = sessionStorage.getItem('currentUploadPath');
+    if (storedPath === '/upload' && location.pathname !== '/upload') {
+      navigate('/upload', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   // Check if the user is a Pro user - only once
   useEffect(() => {
@@ -188,6 +198,10 @@ const Upload = () => {
       }
       
       toast.success('Screenshots successfully uploaded');
+      
+      // Clear the session storage path before navigating away
+      sessionStorage.removeItem('currentUploadPath');
+      
       navigate(`/app/${appMetadata.id}`);
     } catch (error) {
       console.error('Error during upload:', error);

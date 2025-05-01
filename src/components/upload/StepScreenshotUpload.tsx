@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -58,10 +57,11 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
     }
   }, []);
 
-  // Monitor tab visibility
+  // Monitor tab visibility without triggering navigation changes
   useEffect(() => {
     const handleVisibilityChange = () => {
       isTabFocusedRef.current = !document.hidden;
+      console.log('Tab focus changed, isTabFocused:', isTabFocusedRef.current);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -175,10 +175,11 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
     sessionStorage.removeItem('uploadedScreenshots');
   };
 
-  // When user is about to leave, warn them that their progress will be lost
-  // But don't warn if they're just switching tabs
+  // Only show confirmation when actually navigating away from the page, not when switching tabs
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only show confirmation if there are screenshots AND the tab is still in focus
+      // This prevents the dialog from showing when just switching tabs
       if (uploadedScreenshots.length > 0 && isTabFocusedRef.current) {
         // Standard way to show a confirmation dialog when leaving
         e.preventDefault();

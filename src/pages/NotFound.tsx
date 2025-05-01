@@ -1,15 +1,25 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+
+import { useLocation, useNavigate, useEffect } from "react-router-dom";
 
 const NotFound = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname
-    );
-  }, [location.pathname]);
+    // Check if there's a stored upload path in sessionStorage
+    const storedPath = sessionStorage.getItem('currentUploadPath');
+
+    if (storedPath === '/upload') {
+      // If we were in the upload process, return there
+      navigate('/upload', { replace: true });
+    } else {
+      // Log that we hit a 404
+      console.error(
+        "404 Error: User attempted to access non-existent route:",
+        location.pathname
+      );
+    }
+  }, [location.pathname, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

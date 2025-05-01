@@ -332,28 +332,6 @@ const Upload = () => {
       <Footer />
     </div>
   );
-  
-  function handleScreenshotTag(
-    index: number, 
-    screenCategoryId: string, 
-    uiElementIds: string[]
-  ) {
-    setScreenshots(prev => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        screenCategoryId,
-        uiElementIds
-      };
-      return updated;
-    });
-    
-    if (index === screenshots.length - 1) {
-      setStep(5);
-    } else {
-      setCurrentScreenshotIndex(index + 1);
-    }
-  }
 };
 
 export default Upload;

@@ -45,8 +45,8 @@ const Navbar = () => {
         
         <nav className="flex items-center gap-4">
           <Link to="/pricing" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Pricing</Link>
-          <Link to="/signup" className="text-sm font-medium px-4 py-2 rounded-full bg-skreenlab-blue text-white hover:bg-skreenlab-blue/90 transition-colors">Join for Free</Link>
           <Link to="/signin" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Sign In</Link>
+          <Link to="/signup" className="text-sm font-medium px-4 py-2 rounded-full bg-skreenlab-blue text-white hover:bg-skreenlab-blue/90 transition-colors">Join for Free</Link>
         </nav>
       </div>
     </header>

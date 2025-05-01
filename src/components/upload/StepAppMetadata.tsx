@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { App } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 
 interface StepAppMetadataProps {
   appStoreLink: string;
@@ -27,65 +28,56 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
       setError(null);
       
       try {
-        // First, check if this app already exists in our database
+        // First, check if this app already exists in our database by store URL
         let app: App | null = null;
         
         if (appStoreLink.includes('apps.apple.com')) {
-          // Extract App ID from URL
-          const appIdMatch = appStoreLink.match(/id(\d+)/);
-          const appId = appIdMatch ? appIdMatch[1] : null;
-          
-          if (appId) {
-            // Check if app exists in our database by bundle ID
-            const { data: existingApp } = await supabase
-              .from('apps')
-              .select('*')
-              .eq('bundle_id', `com.apple.${appId}`)
-              .single();
+          const { data: existingAppData } = await supabase
+            .from('apps')
+            .select('*')
+            .eq('app_store_url', appStoreLink)
+            .maybeSingle();
             
-            if (existingApp) {
-              app = existingApp as unknown as App;
-            } else {
-              // If not found, fetch from App Store API (simulated here)
-              // In a real implementation, this would call an edge function to fetch from App Store API
-              app = {
-                id: crypto.randomUUID(),
-                name: 'Sample iOS App',
-                platform: 'iOS',
-                icon_url: 'https://placekitten.com/512/512',
-                publisher: 'App Publisher',
-                screenshots_count: 0
-              };
-            }
+          if (existingAppData) {
+            app = existingAppData as unknown as App;
           }
         } else if (appStoreLink.includes('play.google.com')) {
-          // Extract package name from URL
-          const packageMatch = appStoreLink.match(/id=([^&]+)/);
-          const packageName = packageMatch ? packageMatch[1] : null;
-          
-          if (packageName) {
-            // Check if app exists in our database by bundle ID
-            const { data: existingApp } = await supabase
-              .from('apps')
-              .select('*')
-              .eq('bundle_id', packageName)
-              .single();
+          const { data: existingAppData } = await supabase
+            .from('apps')
+            .select('*')
+            .eq('play_store_url', appStoreLink)
+            .maybeSingle();
             
-            if (existingApp) {
-              app = existingApp as unknown as App;
-            } else {
-              // If not found, fetch from Play Store API (simulated here)
-              // In a real implementation, this would call an edge function to fetch from Play Store API
-              app = {
-                id: crypto.randomUUID(),
-                name: 'Sample Android App',
-                platform: 'Android',
-                icon_url: 'https://placekitten.com/512/512',
-                publisher: 'App Publisher',
-                screenshots_count: 0
-              };
-            }
+          if (existingAppData) {
+            app = existingAppData as unknown as App;
           }
+        }
+        
+        // If app doesn't exist in database, fetch it from the store API
+        if (!app) {
+          // Call our edge function to fetch app data
+          const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-data', {
+            body: { appStoreLink }
+          });
+          
+          if (fetchError) {
+            throw new Error(fetchError.message || 'Failed to fetch app data');
+          }
+          
+          if (!data || !data.appData) {
+            throw new Error('No app data returned from API');
+          }
+          
+          // Create a new App object with the fetched data
+          app = {
+            id: crypto.randomUUID(),
+            name: data.appData.name,
+            platform: data.appData.platform,
+            publisher: data.appData.publisher,
+            icon_url: data.appData.icon_url || 'https://placekitten.com/512/512', // Fallback icon
+            screenshots_count: 0,
+            bundle_id: data.appData.bundle_id
+          };
         }
         
         if (!app) {
@@ -95,7 +87,8 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
         setAppData(app);
       } catch (err) {
         console.error('Error fetching app data:', err);
-        setError('Failed to fetch app data. Please try a different link.');
+        setError('Failed to fetch app data. Please try a different link or try again later.');
+        toast.error('Failed to fetch app data');
       } finally {
         setLoading(false);
       }
@@ -115,9 +108,7 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
           .insert({
             name: appData.name,
             icon_url: appData.icon_url,
-            bundle_id: appData.platform === 'iOS' 
-              ? `com.apple.${appData.name.toLowerCase().replace(/\s+/g, '')}` 
-              : appData.name.toLowerCase().replace(/\s+/g, ''),
+            bundle_id: appData.bundle_id || appData.name.toLowerCase().replace(/\s+/g, ''),
             description: '',
             app_store_url: appData.platform === 'iOS' ? appStoreLink : null,
             play_store_url: appData.platform === 'Android' ? appStoreLink : null
@@ -142,6 +133,7 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
     } catch (err) {
       console.error('Error confirming app:', err);
       setError('Failed to save app data. Please try again.');
+      toast.error('Failed to save app data');
     }
   };
 
@@ -188,6 +180,14 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
                   <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 rounded-full mr-2">
                     {appData.platform}
                   </span>
+                  <a 
+                    href={appStoreLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary flex items-center"
+                  >
+                    View in store <ExternalLink className="h-3 w-3 ml-1" />
+                  </a>
                 </div>
               </div>
             </div>

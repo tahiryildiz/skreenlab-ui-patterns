@@ -1,1 +1,5 @@
+
 project_id = "ggvqdqyioldxbyislrev"
+
+[functions.fetch-app-data]
+verify_jwt = false

@@ -21,6 +21,7 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [appData, setAppData] = useState<App | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchAppData = async () => {
@@ -100,31 +101,42 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
   const handleConfirm = async () => {
     if (!appData) return;
     
+    setSubmitting(true);
+    
     try {
-      // If this is a new app, insert it into our database
-      if (!appData.id.startsWith('00000000-')) { // Check if it's a generated UUID
+      // Check if this is a newly generated UUID (not from the database)
+      if (!appData.id.startsWith('00000000-')) { 
+        // Prepare the app data
+        const appInsertData = {
+          name: appData.name,
+          icon_url: appData.icon_url,
+          bundle_id: appData.bundle_id || appData.name.toLowerCase().replace(/\s+/g, ''),
+          description: '',
+          app_store_url: appData.platform === 'iOS' ? appStoreLink : null,
+          play_store_url: appData.platform === 'Android' ? appStoreLink : null
+        };
+        
+        // Insert the app data
         const { data, error } = await supabase
           .from('apps')
-          .insert({
-            name: appData.name,
-            icon_url: appData.icon_url,
-            bundle_id: appData.bundle_id || appData.name.toLowerCase().replace(/\s+/g, ''),
-            description: '',
-            app_store_url: appData.platform === 'iOS' ? appStoreLink : null,
-            play_store_url: appData.platform === 'Android' ? appStoreLink : null
-          })
+          .insert(appInsertData)
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Database insert error:', error);
+          throw new Error(`Failed to save app data: ${error.message}`);
+        }
         
-        // Update the app data with the inserted record
         if (data) {
+          // Update the app data with the inserted record's ID
           onConfirm({
             ...appData,
             id: data.id
           });
           return;
+        } else {
+          throw new Error('No data returned after insert');
         }
       }
       
@@ -132,8 +144,11 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
       onConfirm(appData);
     } catch (err) {
       console.error('Error confirming app:', err);
-      setError('Failed to save app data. Please try again.');
-      toast.error('Failed to save app data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save app data';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -197,14 +212,23 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
                 variant="outline"
                 onClick={onBack}
                 className="flex-1"
+                disabled={submitting}
               >
                 Back
               </Button>
               <Button 
                 onClick={handleConfirm}
                 className="flex-1"
+                disabled={submitting}
               >
-                Yes, Continue
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Yes, Continue'
+                )}
               </Button>
             </div>
           </div>

@@ -10,6 +10,7 @@ import SignUp from "./pages/SignUp";
 import ForgotPassword from "./pages/ForgotPassword";
 import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
+import Upload from "./pages/Upload";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const AppRoutes = () => (
     <Route path="/signup" element={<SignUp />} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/pricing" element={<Pricing />} />
+    <Route path="/upload" element={<Upload />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

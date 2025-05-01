@@ -1,13 +1,48 @@
 
-import React from 'react';
-import { Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const Navbar = () => {
   const { user, signOut, isLoading } = useAuth();
+  const [isProUser, setIsProUser] = useState(false);
+  
+  useEffect(() => {
+    const checkProStatus = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('is_pro')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) throw error;
+          
+          setIsProUser(!!data?.is_pro);
+        } catch (error) {
+          console.error('Error checking Pro status:', error);
+          setIsProUser(false);
+        }
+      }
+    };
+
+    if (!isLoading && user) {
+      checkProStatus();
+    } else {
+      setIsProUser(false);
+    }
+  }, [user, isLoading]);
   
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
@@ -52,6 +87,28 @@ const Navbar = () => {
           {!isLoading && (
             user ? (
               <div className="flex items-center gap-4">
+                {isProUser && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link to="/upload">
+                          <Button 
+                            variant="default"
+                            className="bg-skreenlab-blue hover:bg-skreenlab-blue/90 text-white rounded-full"
+                            size="sm"
+                          >
+                            <Upload className="h-4 w-4 mr-1" />
+                            Upload
+                          </Button>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Upload new screenshots</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                
                 <span className="text-sm font-medium">
                   {user.email}
                 </span>

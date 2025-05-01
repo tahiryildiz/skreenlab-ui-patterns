@@ -104,44 +104,45 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
     setSubmitting(true);
     
     try {
-      // Check if this is a newly generated UUID (not from the database)
-      if (!appData.id.startsWith('00000000-')) { 
-        // Prepare the app data
+      // Only insert if this is a newly generated app (not from the database)
+      if (typeof appData.id === 'string' && !appData.id.includes('-')) {
         const appInsertData = {
-          name: appData.name,
-          icon_url: appData.icon_url,
-          bundle_id: appData.bundle_id || appData.name.toLowerCase().replace(/\s+/g, ''),
+          name: appData.name || 'Unknown App',
+          icon_url: appData.icon_url || null,
+          bundle_id: appData.bundle_id || appData.name?.toLowerCase().replace(/\s+/g, '') || 'unknown',
           description: '',
-          app_store_url: appData.platform === 'iOS' ? appStoreLink : null,
-          play_store_url: appData.platform === 'Android' ? appStoreLink : null
+          app_store_url: appStoreLink.includes('apps.apple.com') ? appStoreLink : null,
+          play_store_url: appStoreLink.includes('play.google.com') ? appStoreLink : null
         };
+        
+        console.log('Inserting app data:', appInsertData);
         
         // Insert the app data
         const { data, error } = await supabase
           .from('apps')
-          .insert(appInsertData)
-          .select()
-          .single();
+          .insert([appInsertData]) // Make sure we pass an array
+          .select();
           
         if (error) {
           console.error('Database insert error:', error);
           throw new Error(`Failed to save app data: ${error.message}`);
         }
         
-        if (data) {
-          // Update the app data with the inserted record's ID
+        if (data && data.length > 0) {
+          console.log('App successfully inserted:', data[0]);
           onConfirm({
             ...appData,
-            id: data.id
+            id: data[0].id
           });
           return;
         } else {
           throw new Error('No data returned after insert');
         }
+      } else {
+        // If app already exists in the database, just use it
+        console.log('Using existing app:', appData);
+        onConfirm(appData);
       }
-      
-      // If app already exists, just pass it along
-      onConfirm(appData);
     } catch (err) {
       console.error('Error confirming app:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to save app data';

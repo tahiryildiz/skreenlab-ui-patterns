@@ -2,13 +2,15 @@
 import React from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-2">
-          <a href="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <div className="bg-skreenlab-blue text-white p-1 rounded">
               <svg 
                 xmlns="http://www.w3.org/2000/svg"
@@ -27,7 +29,7 @@ const Navbar = () => {
               </svg>
             </div>
             <span className="text-xl font-bold">Skreenlab</span>
-          </a>
+          </Link>
         </div>
         
         <div className="flex-1 px-8 max-w-xl mx-auto">
@@ -42,9 +44,9 @@ const Navbar = () => {
         </div>
         
         <nav className="flex items-center gap-4">
-          <a href="#" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Browse</a>
-          <a href="#" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Categories</a>
-          <a href="#" className="text-sm font-medium px-4 py-2 rounded-full bg-skreenlab-blue text-white hover:bg-skreenlab-blue/90 transition-colors">Sign In</a>
+          <Link to="/pricing" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Pricing</Link>
+          <Link to="/signup" className="text-sm font-medium px-4 py-2 rounded-full bg-skreenlab-blue text-white hover:bg-skreenlab-blue/90 transition-colors">Join for Free</Link>
+          <Link to="/signin" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Sign In</Link>
         </nav>
       </div>
     </header>

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, ImageIcon } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import { UploadScreenshot } from '@/pages/Upload';
+import { UploadScreenshot } from '@/types/upload';
 
 interface StepScreenshotUploadProps {
   onUpload: (screenshots: UploadScreenshot[]) => void;

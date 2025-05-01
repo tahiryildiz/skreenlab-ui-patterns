@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Upload, CheckCircle } from 'lucide-react';
 import type { App } from '@/types';
-import type { UploadScreenshot } from '@/pages/Upload';
+import type { UploadScreenshot } from '@/types/upload';
 
 interface StepSubmitProps {
   screenshots: UploadScreenshot[];

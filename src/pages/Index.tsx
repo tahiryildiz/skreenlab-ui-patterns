@@ -49,7 +49,7 @@ const Index = () => {
         </section>
         
         {/* App Gallery */}
-        <section id="app-gallery" className="py-12">
+        <section id="app-gallery" className="py-12 bg-gray-900 text-white">
           <div className="container px-4 md:px-6">
             <h2 className="text-2xl font-bold mb-8">Apps</h2>
             
@@ -64,9 +64,12 @@ const Index = () => {
               />
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* Updated grid with larger cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredApps.map(app => (
-                <AppCard key={app.id} app={app} />
+                <div key={app.id} className="h-full">
+                  <AppCard app={app} />
+                </div>
               ))}
             </div>
           </div>

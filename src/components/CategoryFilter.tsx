@@ -19,7 +19,7 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
           className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
             selectedCategory === null
               ? 'bg-skreenlab-blue text-white'
-              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
           }`}
         >
           All
@@ -32,7 +32,7 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
               selectedCategory === category
                 ? 'bg-skreenlab-blue text-white'
-                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
             }`}
           >
             {category.charAt(0).toUpperCase() + category.slice(1)}

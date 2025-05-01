@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,21 +36,69 @@ const Upload = () => {
   const authCheckPerformedRef = useRef(false);
   const initialPathSaved = useRef(false);
   
-  // Store the initial URL in sessionStorage to return to after tab changes
+  // Store the user's upload state in sessionStorage for persistence
+  useEffect(() => {
+    // Save current upload state to sessionStorage
+    const saveUploadState = () => {
+      if (step > 1) {
+        try {
+          const stateToStore = {
+            step,
+            appStoreLink,
+            appMetadata,
+            currentScreenshotIndex
+          };
+          sessionStorage.setItem('uploadState', JSON.stringify(stateToStore));
+        } catch (error) {
+          console.error('Error storing upload state:', error);
+        }
+      }
+    };
+
+    // Save state when component updates
+    saveUploadState();
+  }, [step, appStoreLink, appMetadata, currentScreenshotIndex]);
+
+  // Store the initial URL in sessionStorage and handle visibility changes
   useEffect(() => {
     if (!initialPathSaved.current) {
-      sessionStorage.setItem('currentUploadPath', '/upload');
+      sessionStorage.setItem('currentUploadPath', location.pathname);
       initialPathSaved.current = true;
     }
-  }, []);
 
-  // Restore user to upload page when returning from other tabs
+    // Handle tab visibility changes
+    const handleVisibilityChange = () => {
+      if (!document.hidden && location.pathname === '/upload') {
+        // Tab is visible again and we're on the upload page
+        // No need to navigate as we're already on the correct page
+        console.log('Upload tab is visible again');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [location.pathname]);
+
+  // Restore upload state from sessionStorage when returning to the page
   useEffect(() => {
-    const storedPath = sessionStorage.getItem('currentUploadPath');
-    if (storedPath === '/upload' && location.pathname !== '/upload') {
-      navigate('/upload', { replace: true });
+    if (location.pathname === '/upload') {
+      try {
+        const storedState = sessionStorage.getItem('uploadState');
+        if (storedState) {
+          const parsedState = JSON.parse(storedState);
+          setStep(parsedState.step || 1);
+          setAppStoreLink(parsedState.appStoreLink || '');
+          setAppMetadata(parsedState.appMetadata || null);
+          setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
+        }
+      } catch (error) {
+        console.error('Error retrieving upload state:', error);
+      }
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname]);
 
   // Check if the user is a Pro user - only once
   useEffect(() => {
@@ -199,8 +248,10 @@ const Upload = () => {
       
       toast.success('Screenshots successfully uploaded');
       
-      // Clear the session storage path before navigating away
+      // Clear the session storage before navigating away
       sessionStorage.removeItem('currentUploadPath');
+      sessionStorage.removeItem('uploadState');
+      sessionStorage.removeItem('uploadedScreenshots');
       
       navigate(`/app/${appMetadata.id}`);
     } catch (error) {
@@ -281,6 +332,28 @@ const Upload = () => {
       <Footer />
     </div>
   );
+  
+  function handleScreenshotTag(
+    index: number, 
+    screenCategoryId: string, 
+    uiElementIds: string[]
+  ) {
+    setScreenshots(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        screenCategoryId,
+        uiElementIds
+      };
+      return updated;
+    });
+    
+    if (index === screenshots.length - 1) {
+      setStep(5);
+    } else {
+      setCurrentScreenshotIndex(index + 1);
+    }
+  }
 };
 
 export default Upload;

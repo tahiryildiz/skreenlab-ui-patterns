@@ -21,6 +21,7 @@ interface ScreenCategory {
 }
 
 interface CategoryGroup {
+  id: string;
   name: string;
   icon: string;
   categories: ScreenCategory[];
@@ -95,7 +96,7 @@ const StepScreenTypeSelect: React.FC<StepScreenTypeSelectProps> = ({
         
         // Transform to array format for UI rendering
         const formattedGroups = Object.entries(grouped).map(([key, categories]) => ({
-          id: key,
+          id: key, // Add the id property using the key
           ...CATEGORY_GROUPS[key as keyof typeof CATEGORY_GROUPS] || { name: key, icon: '📱' },
           categories
         }));

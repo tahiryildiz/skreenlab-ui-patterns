@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +30,7 @@ const Upload = () => {
   const [screenshots, setScreenshots] = useState<UploadScreenshot[]>([]);
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasAuthChecked, setHasAuthChecked] = useState(false);
 
   // Check if the user is a Pro user
   useEffect(() => {
@@ -46,8 +46,6 @@ const Upload = () => {
           if (error) {
             console.error('Error checking Pro status:', error);
             setIsProUser(false);
-            toast.error('Only Pro users can upload screenshots');
-            navigate('/pricing');
             return;
           }
           
@@ -59,20 +57,25 @@ const Upload = () => {
             toast.error('Only Pro users can upload screenshots');
             navigate('/pricing');
           }
+          
+          // Mark that we've checked auth
+          setHasAuthChecked(true);
         } catch (error) {
           console.error('Error checking Pro status:', error);
           setIsProUser(false);
-          navigate('/pricing');
         }
+      } else if (!isLoading) {
+        // Only redirect if we're done loading and there's no user
+        navigate('/signin');
       }
     };
 
-    if (!isLoading && user) {
+    // Only check pro status if we haven't already checked auth
+    // or if the user or loading state has changed
+    if ((!hasAuthChecked || user || !isLoading) && !isSubmitting) {
       checkProStatus();
-    } else if (!isLoading && !user) {
-      navigate('/signin');
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate, hasAuthChecked, isSubmitting]);
 
   // Calculate progress percentage based on current step
   const progressPercentage = () => {
@@ -183,11 +186,12 @@ const Upload = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !hasAuthChecked) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  if (!isProUser && !isLoading) {
+  // Only redirect if not pro, not loading, and auth check is complete
+  if (!isProUser && !isLoading && hasAuthChecked) {
     return null; // Will be redirected by useEffect
   }
 

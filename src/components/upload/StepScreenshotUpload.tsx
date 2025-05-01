@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, ImageIcon } from 'lucide-react';
@@ -18,6 +17,44 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   const [uploadedScreenshots, setUploadedScreenshots] = useState<UploadScreenshot[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Save screenshots to sessionStorage when they change
+  useEffect(() => {
+    if (uploadedScreenshots.length > 0) {
+      // Only store necessary data to avoid large objects
+      const screenshotsToStore = uploadedScreenshots.map(screenshot => ({
+        dataUrl: screenshot.dataUrl,
+        screenCategoryId: screenshot.screenCategoryId,
+        uiElementIds: screenshot.uiElementIds,
+      }));
+      
+      try {
+        sessionStorage.setItem('uploadedScreenshots', JSON.stringify(screenshotsToStore));
+      } catch (error) {
+        console.error('Error storing screenshots in session storage:', error);
+      }
+    }
+  }, [uploadedScreenshots]);
+  
+  // Restore screenshots from sessionStorage on component mount
+  useEffect(() => {
+    try {
+      const storedScreenshots = sessionStorage.getItem('uploadedScreenshots');
+      if (storedScreenshots) {
+        const parsedScreenshots = JSON.parse(storedScreenshots);
+        
+        // Recreate the File objects from stored data
+        // Note: We can't fully recreate File objects from sessionStorage
+        // So we'll only restore the screenshots if they were just added this session
+        setUploadedScreenshots(parsedScreenshots.map((screenshot: any, index: number) => ({
+          ...screenshot,
+          file: new File([], `restored-screenshot-${index}.png`, { type: 'image/png' })
+        })));
+      }
+    } catch (error) {
+      console.error('Error retrieving screenshots from session storage:', error);
+    }
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -94,9 +131,16 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   };
 
   const handleRemoveScreenshot = (index: number) => {
-    setUploadedScreenshots(prev => 
-      prev.filter((_, i) => i !== index)
-    );
+    setUploadedScreenshots(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      
+      // If there are no more screenshots, clear sessionStorage
+      if (updated.length === 0) {
+        sessionStorage.removeItem('uploadedScreenshots');
+      }
+      
+      return updated;
+    });
   };
 
   const handleBrowse = () => {
@@ -109,8 +153,30 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
       return;
     }
     
+    // Store the full screenshots object directly in the parent component
     onUpload(uploadedScreenshots);
+    
+    // Clear session storage since we're moving to the next step
+    sessionStorage.removeItem('uploadedScreenshots');
   };
+
+  // When user is about to leave, warn them that their progress will be lost
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (uploadedScreenshots.length > 0) {
+        // Standard way to show a confirmation dialog when leaving
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [uploadedScreenshots]);
 
   return (
     <Card className="border-0 shadow-none">

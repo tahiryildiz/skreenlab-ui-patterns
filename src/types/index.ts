@@ -6,6 +6,7 @@ export interface App {
   platform: 'iOS' | 'Android' | 'Web';
   publisher?: string;
   screenshots_count?: number;
+  bundle_id?: string;
 }
 
 export interface Screenshot {

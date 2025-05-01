@@ -20,9 +20,10 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
     : 'Unknown';
 
   return (
-    <Card className="app-card overflow-hidden flex flex-col h-full">
-      <CardContent className="p-0 flex-1 flex flex-col">
-        <a href={`/app/${app.id}`} className="block flex-1 flex flex-col">
+    <Card className="app-card overflow-hidden">
+      <CardContent className="p-0">
+        <a href={`/app/${app.id}`} className="block">
+          {/* App header with icon and info */}
           <div className="p-4 flex items-center space-x-4">
             <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
               {app.icon_url ? (
@@ -42,45 +43,53 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
             </div>
           </div>
 
-          {/* Screenshots Display - Increased height */}
-          <div className="mt-2 p-4 pt-0 flex-1">
-            <div className="relative aspect-[3/4] w-full h-[400px] rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+          {/* Screenshots Display - New Layout */}
+          <div className="bg-gray-50 p-4 rounded-2xl mx-4">
+            <div className="relative w-full pb-[100%]">
               {appScreenshots.length > 0 ? (
-                <div className="relative w-full h-full">
-                  {/* Display screenshots in a stacked, offset arrangement */}
-                  {appScreenshots.map((screenshot, index) => (
-                    <div 
-                      key={screenshot.id}
-                      className={`absolute top-0 left-0 w-full h-full transform`}
-                      style={{
-                        transform: `rotate(${(index - 1) * 3}deg) translateX(${(index - 1) * 5}%)`,
-                        zIndex: appScreenshots.length - index,
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      <img 
-                        src={screenshot.image_url} 
-                        alt={`${app.name} screenshot ${index + 1}`}
-                        className="w-full h-full object-contain shadow-lg rounded-md"
-                      />
-                      
-                      {/* Hero number indicator */}
-                      <div className="absolute top-2 left-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold shadow-md">
-                        {index + 1}
+                <>
+                  {/* Map screenshots to positions based on index */}
+                  {appScreenshots.map((screenshot, index) => {
+                    let positionClasses = '';
+                    
+                    if (index === 0) {
+                      // Center (main) screenshot
+                      positionClasses = "absolute left-1/2 top-1/2 w-[41%] z-30 transform -translate-x-1/2 -translate-y-1/2 rounded-2xl shadow-lg";
+                    } else if (index === 1) {
+                      // Left screenshot
+                      positionClasses = "absolute left-[5%] top-1/2 w-[33%] z-20 transform -translate-y-1/2 -rotate-5 rounded-xl shadow-md";
+                    } else if (index === 2) {
+                      // Right screenshot
+                      positionClasses = "absolute right-[5%] top-1/2 w-[33%] z-20 transform -translate-y-1/2 rotate-5 rounded-xl shadow-md";
+                    }
+                    
+                    return (
+                      <div 
+                        key={screenshot.id}
+                        className={positionClasses}
+                      >
+                        <img 
+                          src={screenshot.image_url} 
+                          alt={`${app.name} screenshot ${index + 1}`}
+                          className="w-full h-auto object-contain rounded-inherit"
+                        />
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    );
+                  })}
+                </>
               ) : (
-                <span className="text-gray-400">No screenshots</span>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-gray-400">No screenshots</span>
+                </div>
               )}
             </div>
           </div>
 
-          <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 mt-auto flex justify-between items-center">
+          {/* Footer with category info */}
+          <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 mt-4 flex justify-between items-center">
             <div>
               <h4 className="font-semibold text-gray-800">{appCategory}</h4>
-              <span className="text-gray-500 text-sm">{app.screenshots_count} screens</span>
+              <span className="text-gray-500 text-sm">{app.screenshots_count || appScreenshots.length} screens</span>
             </div>
             <span className="text-skreenlab-blue font-medium">View App →</span>
           </div>

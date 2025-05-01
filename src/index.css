@@ -34,6 +34,9 @@
     --ring: 221.2 83.2% 53.3%;
 
     --radius: 0.75rem;
+    
+    --color-light-shades-1: #ffffff;
+    --color-light-shades-alpha-1: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -49,6 +52,30 @@
 
 .app-card {
   @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+}
+
+/* Updated App Card Styles */
+.app-screenshot-container {
+  background: var(--color-light-shades-1);
+  border: 1px solid var(--color-light-shades-alpha-1);
+  border-radius: 24px;
+  box-sizing: border-box;
+  display: block;
+  margin: 0 0 16px;
+  padding: 4px;
+  position: relative;
+  transition: background .3s ease, border .3s ease;
+  width: 100%;
+  z-index: 10;
+}
+
+.app-screenshot-wrapper {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
+  padding: 100% 0 0;
+  position: relative;
+  width: 100%;
 }
 
 .screenshot-card {

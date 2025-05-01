@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, CheckCircle } from 'lucide-react';
@@ -10,7 +10,7 @@ import ErrorDisplay from './ErrorDisplay';
 
 interface StepAppMetadataProps {
   appStoreLink: string;
-  onConfirm: (app: App) => void;
+  onConfirm: (app: App, heroImages?: string[]) => void;
   onBack: () => void;
 }
 
@@ -23,16 +23,23 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
     loading, 
     error, 
     appData, 
+    appStoreMedia,
     submitting, 
     saveAppData,
     retryFetch
   } = useAppMetadata(appStoreLink);
 
+  const [selectedHeroImages, setSelectedHeroImages] = useState<string[]>([]);
+
   const handleConfirm = async () => {
     const savedApp = await saveAppData();
     if (savedApp) {
-      onConfirm(savedApp);
+      onConfirm(savedApp, selectedHeroImages.length > 0 ? selectedHeroImages : undefined);
     }
+  };
+
+  const handleSelectHeroImages = (urls: string[]) => {
+    setSelectedHeroImages(urls);
   };
 
   return (
@@ -60,7 +67,12 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
           />
         ) : appData && (
           <div className="space-y-6">
-            <AppInfoCard appData={appData} appStoreLink={appStoreLink} />
+            <AppInfoCard 
+              appData={appData} 
+              appStoreLink={appStoreLink} 
+              appStoreMedia={appStoreMedia}
+              onSelectHeroImages={handleSelectHeroImages}
+            />
             
             <div className="flex flex-col sm:flex-row gap-3">
               <Button

@@ -21,13 +21,25 @@ async function fetchAppStoreData(appId: string) {
     
     const app = data.results[0];
     
+    // Extract screenshots from the app data
+    const screenshots = app.screenshotUrls || [];
+    const iPadScreenshots = app.ipadScreenshotUrls || [];
+    
+    // Get preview videos if available (introduced in iOS 8)
+    const previewVideos = app.previewVideos || app.appletvScreenshotUrls || [];
+    
+    console.log(`App data fetched successfully: ${JSON.stringify(app)}`);
+    
     return {
       name: app.trackName,
       platform: "iOS",
       icon_url: app.artworkUrl512 || app.artworkUrl100,
       publisher: app.sellerName,
       bundle_id: app.bundleId,
-      description: app.description
+      description: app.description,
+      screenshots: screenshots,
+      ipad_screenshots: iPadScreenshots,
+      preview_videos: previewVideos
     };
   } catch (error) {
     console.error("Error fetching App Store data:", error);
@@ -48,7 +60,9 @@ async function fetchPlayStoreData(packageName: string) {
       icon_url: null,
       publisher: "Unknown Publisher", // Would be fetched in real implementation
       bundle_id: packageName,
-      description: ""
+      description: "",
+      screenshots: [], // Would be fetched in real implementation
+      preview_videos: []
     };
   } catch (error) {
     console.error("Error fetching Play Store data:", error);
@@ -74,7 +88,7 @@ serve(async (req) => {
     
     let appData;
     
-    if (appStoreLink.includes("apps.apple.com")) {
+    if (appStoreLink.includes("apps.apple.com") || appStoreLink.includes("appstore.com")) {
       const appIdMatch = appStoreLink.match(/id(\d+)/);
       const appId = appIdMatch ? appIdMatch[1] : null;
       

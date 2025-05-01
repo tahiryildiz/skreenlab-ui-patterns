@@ -23,14 +23,17 @@ const Upload = () => {
     step,
     appStoreLink,
     appMetadata,
+    heroImages,
     screenshots,
     currentScreenshotIndex,
+    tagStep,
     progressPercentage,
     handlePrevStep,
     handleAppLinkSubmit,
     handleAppMetadataConfirm,
     handleScreenshotsUpload,
-    handleScreenshotTag,
+    handleScreenshotCategorySelect,
+    handleScreenshotElementsSelect,
     clearUploadState
   } = useUploadState();
   
@@ -38,7 +41,7 @@ const Upload = () => {
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
   
   const handleSubmit = () => {
-    uploadScreenshots(screenshots, appMetadata, user, clearUploadState);
+    uploadScreenshots(screenshots, appMetadata, user, clearUploadState, heroImages);
   };
 
   // Loading state
@@ -67,11 +70,13 @@ const Upload = () => {
           appMetadata={appMetadata}
           screenshots={screenshots}
           currentScreenshotIndex={currentScreenshotIndex}
+          tagStep={tagStep}
           isSubmitting={isSubmitting}
           onAppLinkSubmit={handleAppLinkSubmit}
           onAppMetadataConfirm={handleAppMetadataConfirm}
           onScreenshotsUpload={handleScreenshotsUpload}
-          onScreenshotTag={handleScreenshotTag}
+          onScreenshotCategorySelect={handleScreenshotCategorySelect}
+          onScreenshotElementsSelect={handleScreenshotElementsSelect}
           onSubmit={handleSubmit}
           onPrev={handlePrevStep}
         />

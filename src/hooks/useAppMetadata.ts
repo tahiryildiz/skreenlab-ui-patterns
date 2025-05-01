@@ -4,10 +4,17 @@ import { App } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export interface AppStoreMedia {
+  screenshots: string[];
+  ipad_screenshots?: string[];
+  preview_videos?: string[];
+}
+
 export const useAppMetadata = (appStoreLink: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [appData, setAppData] = useState<App | null>(null);
+  const [appStoreMedia, setAppStoreMedia] = useState<AppStoreMedia | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Validate the app store link
@@ -99,6 +106,13 @@ export const useAppMetadata = (appStoreLink: string) => {
         }
 
         console.log('App data fetched from API:', data.appData);
+        
+        // Store app store media (screenshots, videos)
+        setAppStoreMedia({
+          screenshots: data.appData.screenshots || [],
+          ipad_screenshots: data.appData.ipad_screenshots || [],
+          preview_videos: data.appData.preview_videos || []
+        });
         
         // Create a new App object with the fetched data
         app = {
@@ -208,6 +222,7 @@ export const useAppMetadata = (appStoreLink: string) => {
     loading,
     error,
     appData,
+    appStoreMedia,
     submitting,
     fetchAppData,
     saveAppData,

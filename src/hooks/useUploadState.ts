@@ -9,9 +9,11 @@ export function useUploadState() {
   const [step, setStep] = useState(1);
   const [appStoreLink, setAppStoreLink] = useState('');
   const [appMetadata, setAppMetadata] = useState<App | null>(null);
+  const [heroImages, setHeroImages] = useState<string[]>([]);
   const [screenshots, setScreenshots] = useState<UploadScreenshot[]>([]);
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tagStep, setTagStep] = useState<'category' | 'elements'>('category');
   
   // Store the user's upload state in sessionStorage for persistence
   useEffect(() => {
@@ -23,7 +25,9 @@ export function useUploadState() {
             step,
             appStoreLink,
             appMetadata,
-            currentScreenshotIndex
+            heroImages,
+            currentScreenshotIndex,
+            tagStep
           };
           sessionStorage.setItem('uploadState', JSON.stringify(stateToStore));
         } catch (error) {
@@ -34,7 +38,7 @@ export function useUploadState() {
 
     // Save state when component updates
     saveUploadState();
-  }, [step, appStoreLink, appMetadata, currentScreenshotIndex]);
+  }, [step, appStoreLink, appMetadata, heroImages, currentScreenshotIndex, tagStep]);
   
   // Restore upload state from sessionStorage when returning to the page
   useEffect(() => {
@@ -46,7 +50,9 @@ export function useUploadState() {
           setStep(parsedState.step || 1);
           setAppStoreLink(parsedState.appStoreLink || '');
           setAppMetadata(parsedState.appMetadata || null);
+          setHeroImages(parsedState.heroImages || []);
           setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
+          setTagStep(parsedState.tagStep || 'category');
         }
       } catch (error) {
         console.error('Error retrieving upload state:', error);
@@ -77,27 +83,45 @@ export function useUploadState() {
     setStep(2);
   };
 
-  const handleAppMetadataConfirm = (app: App) => {
+  const handleAppMetadataConfirm = (app: App, selectedHeroImages?: string[]) => {
     setAppMetadata(app);
+    if (selectedHeroImages && selectedHeroImages.length > 0) {
+      setHeroImages(selectedHeroImages);
+    }
     setStep(3);
   };
 
   const handleScreenshotsUpload = (newScreenshots: UploadScreenshot[]) => {
     setScreenshots(newScreenshots);
     setCurrentScreenshotIndex(0);
+    setTagStep('category');
     setStep(4);
   };
 
-  const handleScreenshotTag = (
+  const handleScreenshotCategorySelect = (
     index: number, 
-    screenCategoryId: string, 
+    screenCategoryId: string
+  ) => {
+    setScreenshots(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        screenCategoryId
+      };
+      return updated;
+    });
+    
+    setTagStep('elements');
+  };
+
+  const handleScreenshotElementsSelect = (
+    index: number,
     uiElementIds: string[]
   ) => {
     setScreenshots(prev => {
       const updated = [...prev];
       updated[index] = {
         ...updated[index],
-        screenCategoryId,
         uiElementIds
       };
       return updated;
@@ -106,7 +130,8 @@ export function useUploadState() {
     if (index === screenshots.length - 1) {
       setStep(5);
     } else {
-      setCurrentScreenshotIndex(index + 1);
+      setCurrentScreenshotIndex(prev => prev + 1);
+      setTagStep('category');
     }
   };
 
@@ -120,8 +145,10 @@ export function useUploadState() {
     step,
     appStoreLink,
     appMetadata,
+    heroImages,
     screenshots,
     currentScreenshotIndex,
+    tagStep,
     isSubmitting,
     setIsSubmitting,
     progressPercentage,
@@ -130,7 +157,8 @@ export function useUploadState() {
     handleAppLinkSubmit,
     handleAppMetadataConfirm,
     handleScreenshotsUpload,
-    handleScreenshotTag,
+    handleScreenshotCategorySelect,
+    handleScreenshotElementsSelect,
     clearUploadState
   };
 }

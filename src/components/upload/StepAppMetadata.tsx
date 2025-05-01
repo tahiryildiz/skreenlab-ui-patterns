@@ -24,7 +24,8 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
     error, 
     appData, 
     submitting, 
-    saveAppData 
+    saveAppData,
+    retryFetch
   } = useAppMetadata(appStoreLink);
 
   const handleConfirm = async () => {
@@ -52,7 +53,11 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
           </div>
         ) : error ? (
-          <ErrorDisplay message={error} onBack={onBack} />
+          <ErrorDisplay 
+            message={error} 
+            onBack={onBack}
+            onRetry={retryFetch} 
+          />
         ) : appData && (
           <div className="space-y-6">
             <AppInfoCard appData={appData} appStoreLink={appStoreLink} />

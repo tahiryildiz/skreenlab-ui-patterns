@@ -1,28 +1,16 @@
 
-import React, { useState } from 'react';
-import { ExternalLink, Image } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ExternalLink } from 'lucide-react';
 import { App } from '@/types';
 import { AppStoreMedia } from '@/hooks/useAppMetadata';
-import { 
-  Carousel, 
-  CarouselContent, 
-  CarouselItem, 
-  CarouselNext, 
-  CarouselPrevious
-} from '@/components/ui/carousel';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface AppInfoCardProps {
   appData: App;
   appStoreLink: string;
   appStoreMedia?: AppStoreMedia | null;
-  onSelectHeroImages?: (urls: string[]) => void;
+  onSelectHeroImages?: (urls: string[], positions: Record<string, number>) => void;
 }
 
 const AppInfoCard: React.FC<AppInfoCardProps> = ({ 
@@ -32,27 +20,84 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
   onSelectHeroImages 
 }) => {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [heroPositions, setHeroPositions] = useState<Record<string, number>>({});
   const maxSelectedImages = 3;
+
+  // Track which position is being assigned
+  const getNextAvailablePosition = (): number => {
+    const usedPositions = Object.values(heroPositions);
+    for (let i = 1; i <= maxSelectedImages; i++) {
+      if (!usedPositions.includes(i)) {
+        return i;
+      }
+    }
+    return 1; // Default to position 1 if all are used
+  };
 
   const handleImageToggle = (imageUrl: string) => {
     setSelectedImages(prev => {
       if (prev.includes(imageUrl)) {
-        return prev.filter(url => url !== imageUrl);
+        // Remove the image
+        const newSelected = prev.filter(url => url !== imageUrl);
+        
+        // Update positions
+        setHeroPositions(prevPositions => {
+          const newPositions = { ...prevPositions };
+          delete newPositions[imageUrl];
+          return newPositions;
+        });
+        
+        return newSelected;
       } else {
-        // If already at max selection, remove the first one
+        // If already at max selection, don't add more
         if (prev.length >= maxSelectedImages) {
-          return [...prev.slice(1), imageUrl];
+          return prev;
         }
-        return [...prev, imageUrl];
+        
+        // Add the image and assign it a position
+        const newSelected = [...prev, imageUrl];
+        
+        // Assign a position to the new image
+        setHeroPositions(prevPositions => {
+          return {
+            ...prevPositions,
+            [imageUrl]: getNextAvailablePosition()
+          };
+        });
+        
+        return newSelected;
       }
+    });
+  };
+
+  const updateHeroPosition = (imageUrl: string, position: number) => {
+    if (position < 1 || position > maxSelectedImages) return;
+    
+    // Check if another image already has this position
+    const imageWithPosition = Object.entries(heroPositions).find(
+      ([url, pos]) => pos === position && url !== imageUrl
+    );
+    
+    setHeroPositions(prev => {
+      const newPositions = { ...prev };
+      
+      // Swap positions if another image has the requested position
+      if (imageWithPosition) {
+        const [otherUrl] = imageWithPosition;
+        newPositions[otherUrl] = prev[imageUrl] || getNextAvailablePosition();
+      }
+      
+      // Set the new position
+      newPositions[imageUrl] = position;
+      return newPositions;
     });
   };
 
   React.useEffect(() => {
     if (onSelectHeroImages) {
-      onSelectHeroImages(selectedImages);
+      onSelectHeroImages(selectedImages, heroPositions);
     }
-  }, [selectedImages, onSelectHeroImages]);
+  }, [selectedImages, heroPositions, onSelectHeroImages]);
 
   const hasScreenshots = appStoreMedia && 
     (appStoreMedia.screenshots.length > 0 || 
@@ -103,70 +148,106 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
             
             {appStoreMedia?.screenshots && appStoreMedia.screenshots.length > 0 && (
               <TabsContent value="phone">
-                <Carousel className="w-full">
-                  <CarouselContent>
-                    {appStoreMedia.screenshots.map((screenshot, index) => (
-                      <CarouselItem key={index} className="basis-1/2 md:basis-1/3 lg:basis-1/4">
-                        <div className="relative p-1">
-                          <div className="relative overflow-hidden rounded-lg aspect-[9/16]">
-                            <img 
-                              src={screenshot} 
-                              alt={`Screenshot ${index + 1}`} 
-                              className="object-cover w-full h-full"
-                            />
-                            <div className="absolute top-2 right-2">
-                              <Checkbox 
-                                checked={selectedImages.includes(screenshot)}
-                                onCheckedChange={() => handleImageToggle(screenshot)}
-                                disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
-                              />
-                            </div>
-                          </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {appStoreMedia.screenshots.map((screenshot, index) => (
+                    <div key={index} className="relative">
+                      <div className="relative overflow-hidden rounded-lg aspect-[9/16]">
+                        <img 
+                          src={screenshot} 
+                          alt={`Screenshot ${index + 1}`} 
+                          className="object-cover w-full h-full"
+                        />
+                        <div className="absolute top-2 right-2 flex items-center space-x-2">
+                          <Checkbox 
+                            checked={selectedImages.includes(screenshot)}
+                            onCheckedChange={() => handleImageToggle(screenshot)}
+                            disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
+                          />
                         </div>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <CarouselPrevious />
-                  <CarouselNext />
-                </Carousel>
+
+                        {selectedImages.includes(screenshot) && (
+                          <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
+                            {heroPositions[screenshot]}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {selectedImages.includes(screenshot) && (
+                        <div className="mt-2 flex items-center justify-center space-x-2">
+                          {[1, 2, 3].map(position => (
+                            <button
+                              key={position}
+                              onClick={() => updateHeroPosition(screenshot, position)}
+                              className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                heroPositions[screenshot] === position 
+                                  ? 'bg-primary text-white' 
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {position}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </TabsContent>
             )}
             
             {appStoreMedia?.ipad_screenshots && appStoreMedia.ipad_screenshots.length > 0 && (
               <TabsContent value="tablet">
-                <Carousel className="w-full">
-                  <CarouselContent>
-                    {appStoreMedia.ipad_screenshots.map((screenshot, index) => (
-                      <CarouselItem key={index} className="basis-1/2 md:basis-1/3 lg:basis-1/4">
-                        <div className="relative p-1">
-                          <div className="relative overflow-hidden rounded-lg aspect-[4/3]">
-                            <img 
-                              src={screenshot} 
-                              alt={`iPad Screenshot ${index + 1}`} 
-                              className="object-cover w-full h-full"
-                            />
-                            <div className="absolute top-2 right-2">
-                              <Checkbox 
-                                checked={selectedImages.includes(screenshot)}
-                                onCheckedChange={() => handleImageToggle(screenshot)}
-                                disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
-                              />
-                            </div>
-                          </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {appStoreMedia.ipad_screenshots.map((screenshot, index) => (
+                    <div key={index} className="relative">
+                      <div className="relative overflow-hidden rounded-lg aspect-[4/3]">
+                        <img 
+                          src={screenshot} 
+                          alt={`iPad Screenshot ${index + 1}`} 
+                          className="object-cover w-full h-full"
+                        />
+                        <div className="absolute top-2 right-2 flex items-center space-x-2">
+                          <Checkbox 
+                            checked={selectedImages.includes(screenshot)}
+                            onCheckedChange={() => handleImageToggle(screenshot)}
+                            disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
+                          />
                         </div>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <CarouselPrevious />
-                  <CarouselNext />
-                </Carousel>
+
+                        {selectedImages.includes(screenshot) && (
+                          <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
+                            {heroPositions[screenshot]}
+                          </div>
+                        )}
+                      </div>
+
+                      {selectedImages.includes(screenshot) && (
+                        <div className="mt-2 flex items-center justify-center space-x-2">
+                          {[1, 2, 3].map(position => (
+                            <button
+                              key={position}
+                              onClick={() => updateHeroPosition(screenshot, position)}
+                              className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                heroPositions[screenshot] === position 
+                                  ? 'bg-primary text-white' 
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {position}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </TabsContent>
             )}
           </Tabs>
 
           {onSelectHeroImages && (
             <div className="mt-3 text-sm text-gray-500">
-              Select up to {maxSelectedImages} screenshots as hero images ({selectedImages.length}/{maxSelectedImages} selected)
+              Select up to {maxSelectedImages} screenshots as hero images ({selectedImages.length}/{maxSelectedImages} selected). Click on the numbers to set display order.
             </div>
           )}
         </div>

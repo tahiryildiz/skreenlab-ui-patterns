@@ -63,6 +63,11 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
                         alt={`${app.name} screenshot ${index + 1}`}
                         className="w-full h-full object-contain shadow-lg rounded-md"
                       />
+                      
+                      {/* Hero number indicator */}
+                      <div className="absolute top-2 left-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold shadow-md">
+                        {index + 1}
+                      </div>
                     </div>
                   ))}
                 </div>

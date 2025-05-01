@@ -30,16 +30,22 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
   } = useAppMetadata(appStoreLink);
 
   const [selectedHeroImages, setSelectedHeroImages] = useState<string[]>([]);
+  const [heroPositions, setHeroPositions] = useState<Record<string, number>>({});
 
   const handleConfirm = async () => {
     const savedApp = await saveAppData();
     if (savedApp) {
-      onConfirm(savedApp, selectedHeroImages.length > 0 ? selectedHeroImages : undefined);
+      // Sort hero images by position before passing them
+      const sortedHeroImages = [...selectedHeroImages].sort(
+        (a, b) => (heroPositions[a] || 999) - (heroPositions[b] || 999)
+      );
+      onConfirm(savedApp, sortedHeroImages.length > 0 ? sortedHeroImages : undefined);
     }
   };
 
-  const handleSelectHeroImages = (urls: string[]) => {
+  const handleSelectHeroImages = (urls: string[], positions: Record<string, number>) => {
     setSelectedHeroImages(urls);
+    setHeroPositions(positions);
   };
 
   return (

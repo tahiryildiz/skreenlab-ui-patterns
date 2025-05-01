@@ -5,6 +5,7 @@ export type UploadScreenshot = {
   screenCategoryId: string | null;
   uiElementIds: string[];
   isHero?: boolean;
+  heroPosition?: number; // Position in hero images (1, 2, 3)
 };
 
 export type StoreScreenshot = {

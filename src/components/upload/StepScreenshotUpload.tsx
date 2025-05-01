@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,6 +18,7 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   const [uploadedScreenshots, setUploadedScreenshots] = useState<UploadScreenshot[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isTabFocusedRef = useRef(true);
   
   // Save screenshots to sessionStorage when they change
   useEffect(() => {
@@ -54,6 +56,19 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
     } catch (error) {
       console.error('Error retrieving screenshots from session storage:', error);
     }
+  }, []);
+
+  // Monitor tab visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isTabFocusedRef.current = !document.hidden;
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,9 +176,10 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   };
 
   // When user is about to leave, warn them that their progress will be lost
+  // But don't warn if they're just switching tabs
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (uploadedScreenshots.length > 0) {
+      if (uploadedScreenshots.length > 0 && isTabFocusedRef.current) {
         // Standard way to show a confirmation dialog when leaving
         e.preventDefault();
         e.returnValue = '';

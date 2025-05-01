@@ -27,8 +27,13 @@ const Navbar = () => {
             .eq('id', user.id)
             .single();
           
-          if (error) throw error;
+          if (error) {
+            console.error('Error checking Pro status:', error);
+            setIsProUser(false);
+            return;
+          }
           
+          // Safely access is_pro with correct typing
           setIsProUser(!!data?.is_pro);
         } catch (error) {
           console.error('Error checking Pro status:', error);

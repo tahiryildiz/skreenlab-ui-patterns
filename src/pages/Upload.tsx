@@ -43,11 +43,19 @@ const Upload = () => {
             .eq('id', user.id)
             .single();
           
-          if (error) throw error;
+          if (error) {
+            console.error('Error checking Pro status:', error);
+            setIsProUser(false);
+            toast.error('Only Pro users can upload screenshots');
+            navigate('/pricing');
+            return;
+          }
           
-          setIsProUser(!!data?.is_pro);
+          // Safely access is_pro with correct typing
+          const isPro = !!data?.is_pro;
+          setIsProUser(isPro);
           
-          if (!data?.is_pro) {
+          if (!isPro) {
             toast.error('Only Pro users can upload screenshots');
             navigate('/pricing');
           }

@@ -22,7 +22,7 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
               : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
           }`}
         >
-          All
+          All Categories
         </button>
         
         {CATEGORIES.map((category) => (

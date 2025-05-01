@@ -13,6 +13,11 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
   const appScreenshots = mockScreenshots
     .filter(screenshot => screenshot.app_name === app.name)
     .slice(0, 3);
+  
+  // Get the category from the first screenshot or default to "unknown"
+  const appCategory = appScreenshots.length > 0 
+    ? appScreenshots[0].category.charAt(0).toUpperCase() + appScreenshots[0].category.slice(1) 
+    : 'Unknown';
 
   return (
     <Card className="app-card overflow-hidden flex flex-col h-full">
@@ -37,9 +42,9 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
             </div>
           </div>
 
-          {/* Screenshots Display */}
+          {/* Screenshots Display - Increased height */}
           <div className="mt-2 p-4 pt-0 flex-1">
-            <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+            <div className="relative aspect-[3/4] w-full h-[400px] rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
               {appScreenshots.length > 0 ? (
                 <div className="relative w-full h-full">
                   {/* Display screenshots in a stacked, offset arrangement */}
@@ -69,9 +74,7 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
 
           <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 mt-auto flex justify-between items-center">
             <div>
-              <h4 className="font-semibold text-gray-800">{
-                appScreenshots.length > 0 ? appScreenshots[0].category.charAt(0).toUpperCase() + appScreenshots[0].category.slice(1) : 'Unknown'
-              }</h4>
+              <h4 className="font-semibold text-gray-800">{appCategory}</h4>
               <span className="text-gray-500 text-sm">{app.screenshots_count} screens</span>
             </div>
             <span className="text-skreenlab-blue font-medium">View App →</span>

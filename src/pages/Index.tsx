@@ -1,23 +1,16 @@
-
 import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import AppCard from '@/components/AppCard';
 import CategoryFilter from '@/components/CategoryFilter';
-import PlatformFilter from '@/components/PlatformFilter';
 import { ScreenCategory } from '@/types';
 import { mockApps } from '@/services/mockData';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<ScreenCategory | null>(null);
-  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   
-  const filteredApps = mockApps.filter(app => {
-    if (selectedPlatform && app.platform !== selectedPlatform) {
-      return false;
-    }
-    return true;
-  });
+  // Apply category filtering if needed in the future
+  const filteredApps = mockApps;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -53,11 +46,7 @@ const Index = () => {
           <div className="container px-4 md:px-6">
             <h2 className="text-2xl font-bold mb-8">Apps</h2>
             
-            <div className="mb-8 space-y-4">
-              <PlatformFilter 
-                selectedPlatform={selectedPlatform}
-                onSelectPlatform={setSelectedPlatform}
-              />
+            <div className="mb-8">
               <CategoryFilter 
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}

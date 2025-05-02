@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { App } from '@/types';
 import { UploadScreenshot } from '@/types/upload';
@@ -14,9 +15,114 @@ export function useUploadState() {
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagStep, setTagStep] = useState<'category' | 'elements'>('category');
+  const hasRestoredStateRef = useRef(false);
+  const mountedRef = useRef(true);
+  
+  // Track component mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    console.log('Upload state component mounted');
+    
+    return () => {
+      mountedRef.current = false;
+      console.log('Upload state component unmounted');
+    };
+  }, []);
+
+  // Add visibility change handler to ensure state preservation across tab switches
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // When page becomes visible again after being hidden
+      if (document.visibilityState === 'visible' && mountedRef.current) {
+        console.log('Page visible again, checking for saved state');
+        // Only try to restore if we haven't already done so
+        if (!hasRestoredStateRef.current) {
+          restoreStateFromStorage();
+        }
+      }
+    };
+    
+    // Register visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
+  // Function to restore state from sessionStorage
+  const restoreStateFromStorage = () => {
+    try {
+      const storedState = sessionStorage.getItem('uploadState');
+      if (storedState && mountedRef.current) {
+        const parsedState = JSON.parse(storedState);
+        console.log('Restoring upload state from storage', { step: parsedState.step });
+        
+        // Only restore state if we're on the upload page
+        if (location.pathname === '/upload') {
+          setStep(parsedState.step || 1);
+          setAppStoreLink(parsedState.appStoreLink || '');
+          setAppMetadata(parsedState.appMetadata || null);
+          setHeroImages(parsedState.heroImages || undefined);
+          setHeroVideos(parsedState.heroVideos || undefined);
+          
+          // Restore screenshots with reconstructed File objects
+          if (parsedState.screenshots && Array.isArray(parsedState.screenshots)) {
+            const restoredScreenshots = parsedState.screenshots.map((s: any) => {
+              // Create a new object with the saved properties
+              let screenshot: UploadScreenshot = {
+                dataUrl: s.dataUrl,
+                screenCategoryId: s.screenCategoryId || null,
+                uiElementIds: s.uiElementIds || [],
+                file: null as any // We'll try to reconstruct this below
+              };
+              
+              // Try to reconstruct a File object from the dataUrl if possible
+              if (s.dataUrl && s.fileName) {
+                try {
+                  // Convert data URL to blob
+                  const arr = s.dataUrl.split(',');
+                  const mime = arr[0].match(/:(.*?);/)[1];
+                  const bstr = atob(arr[1]);
+                  let n = bstr.length;
+                  const u8arr = new Uint8Array(n);
+                  while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                  }
+                  
+                  // Create File object from blob
+                  const blob = new Blob([u8arr], { type: mime });
+                  screenshot.file = new File([blob], s.fileName, { type: s.fileType || mime });
+                } catch (error) {
+                  console.error('Error reconstructing File from dataUrl:', error);
+                }
+              }
+              
+              return screenshot;
+            });
+            
+            setScreenshots(restoredScreenshots);
+          } else {
+            setScreenshots([]);
+          }
+          
+          setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
+          setTagStep(parsedState.tagStep || 'category');
+          
+          console.log('Successfully restored upload state from sessionStorage');
+          hasRestoredStateRef.current = true;
+        }
+      }
+    } catch (error) {
+      console.error('Error retrieving upload state:', error);
+    }
+  };
   
   // Store the user's upload state in sessionStorage for persistence
   useEffect(() => {
+    // Only run this effect if the component is mounted
+    if (!mountedRef.current) return;
+    
     // Save current upload state to sessionStorage whenever it changes
     const saveUploadState = () => {
       if (step > 1) {
@@ -40,7 +146,7 @@ export function useUploadState() {
             tagStep
           };
           sessionStorage.setItem('uploadState', JSON.stringify(stateToStore));
-          console.log('Upload state saved to sessionStorage');
+          console.log('Upload state saved to sessionStorage', { step });
         } catch (error) {
           console.error('Error storing upload state:', error);
         }
@@ -51,68 +157,14 @@ export function useUploadState() {
     saveUploadState();
   }, [step, appStoreLink, appMetadata, heroImages, heroVideos, screenshots, currentScreenshotIndex, tagStep]);
   
-  // Restore upload state from sessionStorage when returning to the page
+  // Restore upload state from sessionStorage when first mounting
   useEffect(() => {
     // This effect should run only once when the component mounts
-    try {
-      const storedState = sessionStorage.getItem('uploadState');
-      if (storedState) {
-        const parsedState = JSON.parse(storedState);
-        setStep(parsedState.step || 1);
-        setAppStoreLink(parsedState.appStoreLink || '');
-        setAppMetadata(parsedState.appMetadata || null);
-        setHeroImages(parsedState.heroImages || undefined);
-        setHeroVideos(parsedState.heroVideos || undefined);
-        
-        // Restore screenshots with reconstructed File objects
-        if (parsedState.screenshots && Array.isArray(parsedState.screenshots)) {
-          const restoredScreenshots = parsedState.screenshots.map((s: any) => {
-            // Create a new object with the saved properties
-            let screenshot: UploadScreenshot = {
-              dataUrl: s.dataUrl,
-              screenCategoryId: s.screenCategoryId || null,
-              uiElementIds: s.uiElementIds || [],
-              file: null as any // We'll try to reconstruct this below
-            };
-            
-            // Try to reconstruct a File object from the dataUrl if possible
-            if (s.dataUrl && s.fileName) {
-              try {
-                // Convert data URL to blob
-                const arr = s.dataUrl.split(',');
-                const mime = arr[0].match(/:(.*?);/)[1];
-                const bstr = atob(arr[1]);
-                let n = bstr.length;
-                const u8arr = new Uint8Array(n);
-                while (n--) {
-                  u8arr[n] = bstr.charCodeAt(n);
-                }
-                
-                // Create File object from blob
-                const blob = new Blob([u8arr], { type: mime });
-                screenshot.file = new File([blob], s.fileName, { type: s.fileType || mime });
-              } catch (error) {
-                console.error('Error reconstructing File from dataUrl:', error);
-              }
-            }
-            
-            return screenshot;
-          });
-          
-          setScreenshots(restoredScreenshots);
-        } else {
-          setScreenshots([]);
-        }
-        
-        setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
-        setTagStep(parsedState.tagStep || 'category');
-        
-        console.log('Successfully restored upload state from sessionStorage');
-      }
-    } catch (error) {
-      console.error('Error retrieving upload state:', error);
+    if (!hasRestoredStateRef.current && location.pathname === '/upload') {
+      console.log('Initial mount, attempting to restore state');
+      restoreStateFromStorage();
     }
-  }, []);
+  }, [location.pathname]);
 
   // Calculate progress percentage based on current step
   const progressPercentage = () => {
@@ -201,6 +253,8 @@ export function useUploadState() {
     setCurrentScreenshotIndex(0);
     setTagStep('category');
     sessionStorage.removeItem('uploadState');
+    hasRestoredStateRef.current = false;
+    console.log('Upload state cleared from sessionStorage');
   };
 
   return {

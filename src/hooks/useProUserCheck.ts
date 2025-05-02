@@ -12,23 +12,27 @@ export function useProUserCheck() {
   const [hasAuthChecked, setHasAuthChecked] = useState(false);
   const authCheckPerformedRef = useRef(false);
   const initialPathSaved = useRef(false);
+  const isRestoringSession = useRef(false);
   
   // Store the initial URL in sessionStorage
   useEffect(() => {
     if (!initialPathSaved.current) {
       sessionStorage.setItem('currentUploadPath', '/upload');
       initialPathSaved.current = true;
+      console.log('Initial path saved to sessionStorage');
     }
-    
-    // We're removing the visibilitychange event listener as it's causing navigation issues
-    // No need to add any event listeners here since we're using sessionStorage for persistence
   }, []);
 
   // Check if the user is a Pro user
   useEffect(() => {
     const checkProStatus = async () => {
+      // Check if we're restoring from a tab switch
+      const storedState = sessionStorage.getItem('uploadState');
+      isRestoringSession.current = !!storedState;
+      
       if (user && !authCheckPerformedRef.current) {
         authCheckPerformedRef.current = true;
+        console.log('Checking pro status for user:', user.id);
         
         try {
           const { data, error } = await supabase
@@ -47,7 +51,8 @@ export function useProUserCheck() {
           const isPro = !!data?.is_pro;
           setIsProUser(isPro);
           
-          if (!isPro) {
+          // Only redirect if we're not restoring a session
+          if (!isPro && !isRestoringSession.current) {
             toast.error('Only Pro users can upload screenshots');
             navigate('/pricing');
           }

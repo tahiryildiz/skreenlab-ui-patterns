@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import UploadProgress from '@/components/upload/UploadProgress';
@@ -9,6 +9,9 @@ import { useUploadState } from '@/hooks/useUploadState';
 import { useScreenshotUpload } from '@/hooks/useScreenshotUpload';
 
 const Upload = () => {
+  // Component mounted status tracking
+  const isMounted = useRef(true);
+  
   // User authentication and pro status check
   const { 
     user, 
@@ -40,9 +43,17 @@ const Upload = () => {
   
   // Screenshot upload handling
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
-  
-  // No visibilitychange event listeners are added here
-  // We're relying entirely on sessionStorage for state persistence
+
+  // Track component mount status
+  useEffect(() => {
+    isMounted.current = true;
+    console.log('Upload page mounted');
+    
+    return () => {
+      isMounted.current = false;
+      console.log('Upload page unmounted');
+    };
+  }, []);
   
   const handleSubmit = () => {
     uploadScreenshots(screenshots, appMetadata, user, clearUploadState, heroImages, heroVideos);
@@ -53,9 +64,9 @@ const Upload = () => {
     return <div className="min-h-screen flex items-center justify-center bg-white">Loading...</div>;
   }
 
-  // Redirect if not pro user
+  // Redirect if not pro user (but only if auth check has been performed)
   if (!isProUser && !isLoading && hasAuthChecked && authCheckPerformedRef.current && user) {
-    return null; // Will be redirected by useEffect
+    return <div className="min-h-screen flex items-center justify-center bg-white">Redirecting to pricing...</div>;
   }
 
   return (

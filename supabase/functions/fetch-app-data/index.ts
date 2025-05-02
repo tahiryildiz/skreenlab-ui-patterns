@@ -25,8 +25,8 @@ async function fetchAppStoreData(appId: string) {
     const screenshots = app.screenshotUrls || [];
     const iPadScreenshots = app.ipadScreenshotUrls || [];
     
-    // Get preview videos if available (introduced in iOS 8)
-    const previewVideos = app.previewVideos || app.appletvScreenshotUrls || [];
+    // Get preview videos if available
+    const previewVideos = app.previewUrls || [];
     
     console.log(`App data fetched successfully: ${JSON.stringify(app)}`);
     

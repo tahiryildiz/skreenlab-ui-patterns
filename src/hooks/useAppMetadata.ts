@@ -47,14 +47,30 @@ export const useAppMetadata = (appStoreLink: string) => {
       if (!app) {
         console.log('App not found in database, fetching from API...');
         try {
-          // Call our enhanced edge function
-          const data = await fetchAppDataFromApi(appStoreLink);
+          // Call either our enhanced edge function or the original one
+          let data;
+          try {
+            // First try the enhanced function
+            data = await fetchAppDataFromApi(appStoreLink);
+          } catch (enhancedError) {
+            console.error('Enhanced API fetch error, falling back to basic function:', enhancedError);
+            // Fall back to the basic function
+            const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('fetch-upload-app-data', {
+              body: { appStoreLink }
+            });
+            
+            if (fallbackError) throw fallbackError;
+            data = fallbackData;
+          }
           
-          console.log('App data fetched from enhanced API:', data.appData);
+          console.log('App data fetched from API:', data.appData);
           
           // Store app store media (screenshots, videos)
           setAppStoreMedia({
-            screenshots: data.appData.screenshots || [],
+            screenshots: [
+              ...(data.appData.screenshots || []),
+              ...(data.appData.ipad_screenshots || [])
+            ],
             preview_videos: data.appData.preview_videos || []
           });
           

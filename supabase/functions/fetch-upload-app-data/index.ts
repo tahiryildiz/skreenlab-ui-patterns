@@ -35,8 +35,9 @@ const fetchAppStoreData = async (appId: string): Promise<any> => {
       version: appInfo.version,
       release_notes: appInfo.releaseNotes,
       content_rating: appInfo.contentAdvisoryRating,
-      screenshots: appInfo.screenshotUrls || [], // Only phone screenshots
-      preview_videos: appInfo.previewVideos || [] // Video previews
+      screenshots: appInfo.screenshotUrls || [], 
+      ipad_screenshots: appInfo.ipadScreenshotUrls || [],
+      preview_videos: appInfo.previewUrls || [] // Fix: Use previewUrls instead of previewVideos
     };
   } catch (error) {
     console.error('Error fetching App Store data:', error);

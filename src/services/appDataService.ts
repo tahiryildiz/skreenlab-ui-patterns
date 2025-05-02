@@ -45,21 +45,41 @@ export async function findExistingAppByStoreUrl(appStoreLink: string): Promise<A
  * Fetches app data from the store API via Supabase edge function
  */
 export async function fetchAppDataFromApi(appStoreLink: string) {
-  const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-store-complete', {
-    body: { appStoreLink }
-  });
-  
-  if (fetchError) {
-    console.error('Edge function error:', fetchError);
-    throw new Error(fetchError.message || 'Failed to fetch app data');
+  // First try the newer, more complete edge function
+  try {
+    const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-store-complete', {
+      body: { appStoreLink }
+    });
+    
+    if (fetchError) {
+      throw new Error(fetchError.message || 'Failed to fetch app data');
+    }
+    
+    if (!data || !data.appData) {
+      throw new Error('No app data returned from API');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Enhanced fetch function failed, falling back to basic function:', error);
+    
+    // Fall back to the upload-specific function
+    const { data, error: fallbackError } = await supabase.functions.invoke('fetch-upload-app-data', {
+      body: { appStoreLink }
+    });
+    
+    if (fallbackError) {
+      console.error('Edge function error:', fallbackError);
+      throw new Error(fallbackError.message || 'Failed to fetch app data');
+    }
+    
+    if (!data || !data.appData) {
+      console.error('Invalid data returned from API:', data);
+      throw new Error('No app data returned from API');
+    }
+    
+    return data;
   }
-  
-  if (!data || !data.appData) {
-    console.error('Invalid data returned from API:', data);
-    throw new Error('No app data returned from API');
-  }
-
-  return data;
 }
 
 /**

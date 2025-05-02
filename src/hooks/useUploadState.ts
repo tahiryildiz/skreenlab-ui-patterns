@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { App } from '@/types';
@@ -17,11 +16,19 @@ export function useUploadState() {
   const [tagStep, setTagStep] = useState<'category' | 'elements'>('category');
   const hasRestoredStateRef = useRef(false);
   const mountedRef = useRef(true);
+  const hasInitializedRef = useRef(false);
+  const isRestoringRef = useRef(false);
   
   // Track component mount status
   useEffect(() => {
     mountedRef.current = true;
     console.log('Upload state component mounted');
+    
+    // Mark upload as in progress when component mounts
+    if (location.pathname === '/upload' && step > 1) {
+      sessionStorage.setItem('uploadInProgress', 'true');
+      console.log('Setting uploadInProgress flag to true');
+    }
     
     return () => {
       mountedRef.current = false;
@@ -29,15 +36,27 @@ export function useUploadState() {
     };
   }, []);
 
-  // Add visibility change handler to ensure state preservation across tab switches
+  // Handle visibility change manually for more reliable state restoration
   useEffect(() => {
     const handleVisibilityChange = () => {
       // When page becomes visible again after being hidden
       if (document.visibilityState === 'visible' && mountedRef.current) {
         console.log('Page visible again, checking for saved state');
-        // Only try to restore if we haven't already done so
-        if (!hasRestoredStateRef.current) {
-          restoreStateFromStorage();
+        
+        // Set flag to prevent recursive state restoration
+        if (!isRestoringRef.current && location.pathname === '/upload') {
+          isRestoringRef.current = true;
+          
+          // Use setTimeout to ensure this runs after any auth checks
+          setTimeout(() => {
+            restoreStateFromStorage();
+            isRestoringRef.current = false;
+          }, 100);
+        }
+      } else if (document.visibilityState === 'hidden') {
+        // When page is hidden, immediately save current state
+        if (step > 1 && location.pathname === '/upload') {
+          saveUploadState();
         }
       }
     };
@@ -48,15 +67,78 @@ export function useUploadState() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [location.pathname, step]);
+  
+  // Initial state setup when component mounts
+  useEffect(() => {
+    if (!hasInitializedRef.current && location.pathname === '/upload') {
+      hasInitializedRef.current = true;
+      
+      const storedState = sessionStorage.getItem('uploadState');
+      if (storedState) {
+        console.log('Found saved upload state, will restore');
+        
+        // Mark that we have an in-progress upload
+        sessionStorage.setItem('uploadInProgress', 'true');
+        
+        // Restore on first mount, using setTimeout to ensure we're after auth checks
+        setTimeout(() => {
+          if (mountedRef.current) {
+            restoreStateFromStorage();
+          }
+        }, 100);
+      } else {
+        console.log('No saved upload state found, starting fresh');
+        sessionStorage.removeItem('uploadInProgress');
+      }
+    }
+  }, [location.pathname]);
+  
+  // Function to save state to sessionStorage
+  const saveUploadState = () => {
+    if (step > 1 && mountedRef.current) {
+      try {
+        const stateToStore = {
+          step,
+          appStoreLink,
+          appMetadata,
+          heroImages,
+          heroVideos,
+          screenshots: screenshots.map(s => ({
+            dataUrl: s.dataUrl,
+            screenCategoryId: s.screenCategoryId,
+            uiElementIds: s.uiElementIds,
+            fileName: s.file?.name || 'screenshot.png',
+            fileType: s.file?.type || 'image/png',
+            fileSize: s.file?.size || 0,
+            hasFile: !!s.file
+          })),
+          currentScreenshotIndex,
+          tagStep,
+          timestamp: new Date().getTime()
+        };
+        
+        sessionStorage.setItem('uploadState', JSON.stringify(stateToStore));
+        sessionStorage.setItem('uploadInProgress', 'true');
+        console.log('Upload state saved to sessionStorage', { step, timestamp: stateToStore.timestamp });
+      } catch (error) {
+        console.error('Error storing upload state:', error);
+      }
+    }
+  };
   
   // Function to restore state from sessionStorage
   const restoreStateFromStorage = () => {
     try {
       const storedState = sessionStorage.getItem('uploadState');
-      if (storedState && mountedRef.current) {
+      
+      if (storedState && mountedRef.current && !hasRestoredStateRef.current) {
         const parsedState = JSON.parse(storedState);
-        console.log('Restoring upload state from storage', { step: parsedState.step });
+        console.log('Restoring upload state from storage', { 
+          step: parsedState.step,
+          timestamp: parsedState.timestamp,
+          timeElapsed: new Date().getTime() - (parsedState.timestamp || 0)
+        });
         
         // Only restore state if we're on the upload page
         if (location.pathname === '/upload') {
@@ -111,6 +193,9 @@ export function useUploadState() {
           
           console.log('Successfully restored upload state from sessionStorage');
           hasRestoredStateRef.current = true;
+          
+          // Re-mark that we have an upload in progress
+          sessionStorage.setItem('uploadInProgress', 'true');
         }
       }
     } catch (error) {
@@ -120,51 +205,14 @@ export function useUploadState() {
   
   // Store the user's upload state in sessionStorage for persistence
   useEffect(() => {
-    // Only run this effect if the component is mounted
-    if (!mountedRef.current) return;
+    // Avoid saving during restoration
+    if (isRestoringRef.current) return;
     
-    // Save current upload state to sessionStorage whenever it changes
-    const saveUploadState = () => {
-      if (step > 1) {
-        try {
-          const stateToStore = {
-            step,
-            appStoreLink,
-            appMetadata,
-            heroImages,
-            heroVideos,
-            screenshots: screenshots.map(s => ({
-              dataUrl: s.dataUrl,
-              screenCategoryId: s.screenCategoryId,
-              uiElementIds: s.uiElementIds,
-              fileName: s.file?.name || 'screenshot.png',
-              fileType: s.file?.type || 'image/png',
-              fileSize: s.file?.size || 0,
-              hasFile: !!s.file
-            })),
-            currentScreenshotIndex,
-            tagStep
-          };
-          sessionStorage.setItem('uploadState', JSON.stringify(stateToStore));
-          console.log('Upload state saved to sessionStorage', { step });
-        } catch (error) {
-          console.error('Error storing upload state:', error);
-        }
-      }
-    };
-
-    // Save state when component updates
-    saveUploadState();
-  }, [step, appStoreLink, appMetadata, heroImages, heroVideos, screenshots, currentScreenshotIndex, tagStep]);
-  
-  // Restore upload state from sessionStorage when first mounting
-  useEffect(() => {
-    // This effect should run only once when the component mounts
-    if (!hasRestoredStateRef.current && location.pathname === '/upload') {
-      console.log('Initial mount, attempting to restore state');
-      restoreStateFromStorage();
+    // Only save state if we're mounted and past step 1
+    if (mountedRef.current && step > 1 && hasInitializedRef.current) {
+      saveUploadState();
     }
-  }, [location.pathname]);
+  }, [step, appStoreLink, appMetadata, heroImages, heroVideos, screenshots, currentScreenshotIndex, tagStep]);
 
   // Calculate progress percentage based on current step
   const progressPercentage = () => {
@@ -188,6 +236,8 @@ export function useUploadState() {
   const handleAppLinkSubmit = (link: string) => {
     setAppStoreLink(link);
     setStep(2);
+    // Explicitly mark upload as in progress
+    sessionStorage.setItem('uploadInProgress', 'true');
   };
 
   // Handler for step 2: App metadata confirmation
@@ -253,7 +303,9 @@ export function useUploadState() {
     setCurrentScreenshotIndex(0);
     setTagStep('category');
     sessionStorage.removeItem('uploadState');
+    sessionStorage.removeItem('uploadInProgress');
     hasRestoredStateRef.current = false;
+    hasInitializedRef.current = false;
     console.log('Upload state cleared from sessionStorage');
   };
 

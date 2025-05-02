@@ -26,9 +26,20 @@ export function useProUserCheck() {
   // Check if the user is a Pro user
   useEffect(() => {
     const checkProStatus = async () => {
+      // IMPORTANT NEW CODE: Check if upload is in progress to prevent unwanted redirects
+      const uploadInProgress = sessionStorage.getItem('uploadInProgress') === 'true';
+      
       // Check if we're restoring from a tab switch
       const storedState = sessionStorage.getItem('uploadState');
       isRestoringSession.current = !!storedState;
+      
+      // If upload is in progress and we're returning from a tab switch, 
+      // skip authentication checks entirely
+      if (uploadInProgress && isRestoringSession.current) {
+        console.log('Upload in progress detected, skipping auth redirect checks');
+        setHasAuthChecked(true); // Mark auth as checked to prevent further checks
+        return;
+      }
       
       if (user && !authCheckPerformedRef.current) {
         authCheckPerformedRef.current = true;
@@ -51,8 +62,11 @@ export function useProUserCheck() {
           const isPro = !!data?.is_pro;
           setIsProUser(isPro);
           
-          // Only redirect if we're not restoring a session
-          if (!isPro && !isRestoringSession.current) {
+          // Only redirect if:
+          // 1. User is not Pro
+          // 2. We're not restoring a session
+          // 3. There's no upload in progress
+          if (!isPro && !isRestoringSession.current && !uploadInProgress) {
             toast.error('Only Pro users can upload screenshots');
             navigate('/pricing');
           }
@@ -64,9 +78,20 @@ export function useProUserCheck() {
           setIsProUser(false);
         }
       } else if (!isLoading && !user && !authCheckPerformedRef.current) {
-        // Only redirect if we're done loading, there's no user, and we haven't checked auth yet
-        authCheckPerformedRef.current = true;
-        navigate('/signin');
+        // Only redirect if:
+        // 1. We're done loading
+        // 2. There's no user
+        // 3. We haven't checked auth yet
+        // 4. There's no upload in progress
+        if (!uploadInProgress) {
+          authCheckPerformedRef.current = true;
+          navigate('/signin');
+        } else {
+          // Special case: If upload is in progress but no user,
+          // we'll let the component handle this situation rather than redirecting
+          console.log('Upload in progress but no user, skipping redirect');
+          setHasAuthChecked(true);
+        }
       }
     };
 

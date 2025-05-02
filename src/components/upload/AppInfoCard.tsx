@@ -11,7 +11,7 @@ interface AppInfoCardProps {
   appStoreLink: string;
   appStoreMedia?: AppStoreMedia | null;
   appStoreDetails?: AppStoreDetails | null;
-  onSelectHeroImages?: (urls: string[], positions: Record<string, number>) => void;
+  onSelectHeroMedia?: (imageUrls: string[], videoUrls: string[], positions: Record<string, number>) => void;
 }
 
 const AppInfoCard: React.FC<AppInfoCardProps> = ({ 
@@ -19,16 +19,17 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
   appStoreLink,
   appStoreMedia,
   appStoreDetails,
-  onSelectHeroImages 
+  onSelectHeroMedia 
 }) => {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [heroPositions, setHeroPositions] = useState<Record<string, number>>({});
-  const maxSelectedImages = 3;
+  const maxSelectedMedia = 3;
 
   // Track which position is being assigned
   const getNextAvailablePosition = (): number => {
     const usedPositions = Object.values(heroPositions);
-    for (let i = 1; i <= maxSelectedImages; i++) {
+    for (let i = 1; i <= maxSelectedMedia; i++) {
       if (!usedPositions.includes(i)) {
         return i;
       }
@@ -52,7 +53,8 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
         return newSelected;
       } else {
         // If already at max selection, don't add more
-        if (prev.length >= maxSelectedImages) {
+        const totalSelectedCount = prev.length + selectedVideos.length;
+        if (totalSelectedCount >= maxSelectedMedia) {
           return prev;
         }
         
@@ -72,41 +74,78 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
     });
   };
 
-  const updateHeroPosition = (imageUrl: string, position: number) => {
-    if (position < 1 || position > maxSelectedImages) return;
+  const handleVideoToggle = (videoUrl: string) => {
+    setSelectedVideos(prev => {
+      if (prev.includes(videoUrl)) {
+        // Remove the video
+        const newSelected = prev.filter(url => url !== videoUrl);
+        
+        // Update positions
+        setHeroPositions(prevPositions => {
+          const newPositions = { ...prevPositions };
+          delete newPositions[videoUrl];
+          return newPositions;
+        });
+        
+        return newSelected;
+      } else {
+        // If already at max selection, don't add more
+        const totalSelectedCount = selectedImages.length + prev.length;
+        if (totalSelectedCount >= maxSelectedMedia) {
+          return prev;
+        }
+        
+        // Add the video and assign it a position
+        const newSelected = [...prev, videoUrl];
+        
+        // Assign a position to the new video
+        setHeroPositions(prevPositions => {
+          return {
+            ...prevPositions,
+            [videoUrl]: getNextAvailablePosition()
+          };
+        });
+        
+        return newSelected;
+      }
+    });
+  };
+
+  const updateHeroPosition = (mediaUrl: string, position: number) => {
+    if (position < 1 || position > maxSelectedMedia) return;
     
-    // Check if another image already has this position
-    const imageWithPosition = Object.entries(heroPositions).find(
-      ([url, pos]) => pos === position && url !== imageUrl
+    // Check if another image/video already has this position
+    const mediaWithPosition = Object.entries(heroPositions).find(
+      ([url, pos]) => pos === position && url !== mediaUrl
     );
     
     setHeroPositions(prev => {
       const newPositions = { ...prev };
       
-      // Swap positions if another image has the requested position
-      if (imageWithPosition) {
-        const [otherUrl] = imageWithPosition;
-        newPositions[otherUrl] = prev[imageUrl] || getNextAvailablePosition();
+      // Swap positions if another media has the requested position
+      if (mediaWithPosition) {
+        const [otherUrl] = mediaWithPosition;
+        newPositions[otherUrl] = prev[mediaUrl] || getNextAvailablePosition();
       }
       
       // Set the new position
-      newPositions[imageUrl] = position;
+      newPositions[mediaUrl] = position;
       return newPositions;
     });
   };
 
   useEffect(() => {
-    if (onSelectHeroImages) {
-      onSelectHeroImages(selectedImages, heroPositions);
+    if (onSelectHeroMedia) {
+      onSelectHeroMedia(selectedImages, selectedVideos, heroPositions);
     }
-  }, [selectedImages, heroPositions, onSelectHeroImages]);
+  }, [selectedImages, selectedVideos, heroPositions, onSelectHeroMedia]);
 
-  // Check if we have screenshots to display from app store data
-  const hasScreenshots = appStoreMedia && 
-    (appStoreMedia.screenshots?.length > 0);
-    
-  const hasVideos = appStoreMedia && 
-    (appStoreMedia.preview_videos && appStoreMedia.preview_videos.length > 0);
+  // Check if we have screenshots or videos to display from app store data
+  const hasScreenshots = appStoreMedia && (appStoreMedia.screenshots?.length > 0);
+  const hasVideos = appStoreMedia && (appStoreMedia.preview_videos && appStoreMedia.preview_videos.length > 0);
+  
+  // Calculate total selected media count
+  const totalSelectedCount = selectedImages.length + selectedVideos.length;
 
   // Format app rating to display with stars
   const renderRating = () => {
@@ -178,13 +217,13 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
         </div>
       </div>
 
-      {/* Always show this section if onSelectHeroImages is provided */}
-      {onSelectHeroImages && (
+      {/* Always show this section if onSelectHeroMedia is provided */}
+      {onSelectHeroMedia && (
         <div className="border rounded-lg p-4">
           <h4 className="font-medium mb-3">App Store Media</h4>
           
           {(hasScreenshots || hasVideos) ? (
-            <Tabs defaultValue="screenshots">
+            <Tabs defaultValue={hasVideos ? "videos" : "screenshots"}>
               <TabsList>
                 {hasScreenshots && (
                   <TabsTrigger value="screenshots">Screenshots</TabsTrigger>
@@ -209,7 +248,7 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
                             <Checkbox 
                               checked={selectedImages.includes(screenshot)}
                               onCheckedChange={() => handleImageToggle(screenshot)}
-                              disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
+                              disabled={!selectedImages.includes(screenshot) && totalSelectedCount >= maxSelectedMedia}
                             />
                           </div>
 
@@ -247,15 +286,48 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
                 <TabsContent value="videos">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {appStoreMedia?.preview_videos?.map((video, index) => (
-                      <div key={index} className="relative overflow-hidden rounded-lg">
-                        <video 
-                          src={video} 
-                          controls 
-                          className="w-full" 
-                          poster={appStoreMedia.screenshots[0]}
-                        >
-                          Your browser does not support the video tag.
-                        </video>
+                      <div key={index} className="relative">
+                        <div className="relative overflow-hidden rounded-lg aspect-[9/16]">
+                          <video 
+                            src={video} 
+                            controls 
+                            className="w-full h-full object-contain"
+                            poster={appStoreMedia.screenshots?.[0]}
+                          >
+                            Your browser does not support the video tag.
+                          </video>
+                          <div className="absolute top-2 right-2 flex items-center space-x-2">
+                            <Checkbox 
+                              checked={selectedVideos.includes(video)}
+                              onCheckedChange={() => handleVideoToggle(video)}
+                              disabled={!selectedVideos.includes(video) && totalSelectedCount >= maxSelectedMedia}
+                            />
+                          </div>
+
+                          {selectedVideos.includes(video) && (
+                            <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
+                              {heroPositions[video]}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {selectedVideos.includes(video) && (
+                          <div className="mt-2 flex items-center justify-center space-x-2">
+                            {[1, 2, 3].map(position => (
+                              <button
+                                key={position}
+                                onClick={() => updateHeroPosition(video, position)}
+                                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                  heroPositions[video] === position 
+                                    ? 'bg-primary text-white' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {position}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -270,8 +342,8 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
           )}
 
           <div className="mt-3 text-sm text-gray-500">
-            Select up to {maxSelectedImages} screenshots as hero images ({selectedImages.length}/{maxSelectedImages} selected). 
-            {selectedImages.length > 0 && " Click on the numbers to set display order."}
+            Select up to {maxSelectedMedia} media items as hero content ({totalSelectedCount}/{maxSelectedMedia} selected). 
+            {totalSelectedCount > 0 && " Click on the numbers to set display order."}
           </div>
         </div>
       )}

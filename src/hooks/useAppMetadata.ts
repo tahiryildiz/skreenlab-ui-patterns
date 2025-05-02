@@ -103,8 +103,8 @@ export const useAppMetadata = (appStoreLink: string) => {
       if (!app) {
         console.log('App not found in database, fetching from API...');
         try {
-          // Call our new edge function to fetch app data
-          const { data, error: fetchError } = await supabase.functions.invoke('fetch-upload-app-data', {
+          // Call our new enhanced edge function
+          const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-store-complete', {
             body: { appStoreLink }
           });
           
@@ -118,7 +118,7 @@ export const useAppMetadata = (appStoreLink: string) => {
             throw new Error('No app data returned from API');
           }
 
-          console.log('App data fetched from API:', data.appData);
+          console.log('App data fetched from enhanced API:', data.appData);
           
           // Store app store media (screenshots, videos)
           setAppStoreMedia({

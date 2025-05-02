@@ -18,7 +18,7 @@ interface UploadStepContentProps {
   tagStep: 'category' | 'elements';
   isSubmitting: boolean;
   onAppLinkSubmit: (link: string) => void;
-  onAppMetadataConfirm: (app: App, heroImages?: string[]) => void;
+  onAppMetadataConfirm: (app: App, heroImages?: string[], heroVideos?: string[]) => void;
   onScreenshotsUpload: (newScreenshots: UploadScreenshot[]) => void;
   onScreenshotCategorySelect: (index: number, screenCategoryId: string) => void;
   onScreenshotElementsSelect: (index: number, uiElementIds: string[]) => void;

@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.fetch-upload-app-data]
 verify_jwt = false
+
+[functions.fetch-app-store-complete]
+verify_jwt = false

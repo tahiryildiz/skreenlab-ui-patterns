@@ -24,6 +24,7 @@ const Upload = () => {
     appStoreLink,
     appMetadata,
     heroImages,
+    heroVideos,
     screenshots,
     currentScreenshotIndex,
     tagStep,
@@ -41,7 +42,7 @@ const Upload = () => {
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
   
   const handleSubmit = () => {
-    uploadScreenshots(screenshots, appMetadata, user, clearUploadState, heroImages);
+    uploadScreenshots(screenshots, appMetadata, user, clearUploadState, heroImages, heroVideos);
   };
 
   // Loading state

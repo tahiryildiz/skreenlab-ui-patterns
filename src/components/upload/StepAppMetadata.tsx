@@ -10,7 +10,7 @@ import ErrorDisplay from './ErrorDisplay';
 
 interface StepAppMetadataProps {
   appStoreLink: string;
-  onConfirm: (app: App, heroImages?: string[]) => void;
+  onConfirm: (app: App, heroImages?: string[], heroVideos?: string[]) => void;
   onBack: () => void;
 }
 
@@ -31,6 +31,7 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
   } = useAppMetadata(appStoreLink);
 
   const [selectedHeroImages, setSelectedHeroImages] = useState<string[]>([]);
+  const [selectedHeroVideos, setSelectedHeroVideos] = useState<string[]>([]);
   const [heroPositions, setHeroPositions] = useState<Record<string, number>>({});
 
   const handleConfirm = async () => {
@@ -40,12 +41,22 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
       const sortedHeroImages = [...selectedHeroImages].sort(
         (a, b) => (heroPositions[a] || 999) - (heroPositions[b] || 999)
       );
-      onConfirm(savedApp, sortedHeroImages.length > 0 ? sortedHeroImages : undefined);
+      
+      onConfirm(
+        savedApp, 
+        sortedHeroImages.length > 0 ? sortedHeroImages : undefined,
+        selectedHeroVideos.length > 0 ? selectedHeroVideos : undefined
+      );
     }
   };
 
-  const handleSelectHeroImages = (urls: string[], positions: Record<string, number>) => {
-    setSelectedHeroImages(urls);
+  const handleSelectHeroMedia = (
+    imageUrls: string[], 
+    videoUrls: string[], 
+    positions: Record<string, number>
+  ) => {
+    setSelectedHeroImages(imageUrls);
+    setSelectedHeroVideos(videoUrls);
     setHeroPositions(positions);
   };
 
@@ -79,7 +90,7 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
               appStoreLink={appStoreLink} 
               appStoreMedia={appStoreMedia}
               appStoreDetails={appStoreDetails}
-              onSelectHeroImages={handleSelectHeroImages}
+              onSelectHeroMedia={handleSelectHeroMedia}
             />
             
             <div className="flex flex-col sm:flex-row gap-3">

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AppStoreMedia, AppStoreDetails } from '@/types/appMetadata';
 import { isValidStoreLink } from '@/utils/appStoreUtils';
 import { findExistingAppByStoreUrl, fetchAppDataFromApi, saveApp } from '@/services/appDataService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Use 'export type' for re-exporting types when isolatedModules is enabled
 export type { AppStoreMedia, AppStoreDetails } from '@/types/appMetadata';

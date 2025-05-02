@@ -50,7 +50,7 @@ const Upload = () => {
 
   // Loading state
   if (isLoading && !hasAuthChecked) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-white">Loading...</div>;
   }
 
   // Redirect if not pro user
@@ -59,7 +59,7 @@ const Upload = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       
       <main className="flex-1 container max-w-5xl mx-auto px-4 py-8">

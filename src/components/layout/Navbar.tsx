@@ -72,7 +72,7 @@ const Navbar = () => {
   };
   
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200 shadow-sm">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
@@ -93,24 +93,24 @@ const Navbar = () => {
                 <line x1="12" x2="12" y1="17" y2="21" />
               </svg>
             </div>
-            <span className="text-xl font-bold">Skreenlab</span>
+            <span className="text-xl font-bold text-gray-800">Skreenlab</span>
           </Link>
         </div>
         
         <div className="flex-1 px-8 max-w-xl mx-auto">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
             <Input 
               type="search" 
               placeholder="Search for apps, components, or flows..." 
-              className="pl-10 w-full rounded-full bg-gray-50 border-gray-100 focus:bg-white" 
+              className="pl-10 w-full rounded-full bg-gray-50 border-gray-200 focus:bg-white" 
             />
           </div>
         </div>
         
         <nav className="flex items-center gap-4">
           {!isProUser && (
-            <Link to="/pricing" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Pricing</Link>
+            <Link to="/pricing" className="text-sm font-medium text-gray-700 hover:text-skreenlab-blue transition-colors">Pricing</Link>
           )}
           
           {!isLoading && (
@@ -172,7 +172,7 @@ const Navbar = () => {
               </div>
             ) : (
               <>
-                <Link to="/signin" className="text-sm font-medium hover:text-skreenlab-blue transition-colors">Sign In</Link>
+                <Link to="/signin" className="text-sm font-medium text-gray-700 hover:text-skreenlab-blue transition-colors">Sign In</Link>
                 <Link to="/signup" className="text-sm font-medium px-4 py-2 rounded-full bg-skreenlab-blue text-white hover:bg-skreenlab-blue/90 transition-colors">Join for Free</Link>
               </>
             )
@@ -184,4 +184,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

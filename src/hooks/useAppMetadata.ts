@@ -6,7 +6,8 @@ import { AppStoreMedia, AppStoreDetails } from '@/types/appMetadata';
 import { isValidStoreLink } from '@/utils/appStoreUtils';
 import { findExistingAppByStoreUrl, fetchAppDataFromApi, saveApp } from '@/services/appDataService';
 
-export { AppStoreMedia, AppStoreDetails } from '@/types/appMetadata';
+// Use 'export type' for re-exporting types when isolatedModules is enabled
+export type { AppStoreMedia, AppStoreDetails } from '@/types/appMetadata';
 
 export const useAppMetadata = (appStoreLink: string) => {
   const [loading, setLoading] = useState(true);

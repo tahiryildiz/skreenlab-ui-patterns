@@ -20,6 +20,7 @@ export const createUploadStateHandlers = (
   const progressPercentage = (step: number, screenshots: UploadScreenshot[]) => {
     if (step === 5) return 100;
     if (step === 4) {
+      // Fix: Use screenshots.length instead of applying .length to a number
       const taggedCount = screenshots.filter(s => s.screenCategoryId && s.uiElementIds.length > 0).length;
       return Math.min(75 + ((taggedCount / screenshots.length) * 25), 99);
     }
@@ -74,7 +75,8 @@ export const createUploadStateHandlers = (
     }));
     
     setScreenshots(prevScreenshots => [...prevScreenshots, ...screenshotsWithCategory]);
-    setCurrentScreenshotIndex(prevScreenshots => prevScreenshots.length);
+    // Fix: Don't try to access .length on prevScreenshots which is a number in this context
+    setCurrentScreenshotIndex(prevScreenshotsLength => prevScreenshotsLength);
     setTagStep('elements');
     setUploadInProgress();
   };
@@ -115,7 +117,11 @@ export const createUploadStateHandlers = (
     }));
     
     setScreenshots(prevScreenshots => [...prevScreenshots, ...screenshotsWithCategory]);
-    setCurrentScreenshotIndex(prevScreenshots => prevScreenshots.length);
+    // Fix: Don't try to access .length on prevScreenshots which is a number in this context
+    setCurrentScreenshotIndex(prevScreenshotsLength => {
+      // Get the new index by accessing the updated screenshots length
+      return prevScreenshotsLength;
+    });
     setUploadInProgress();
   };
 

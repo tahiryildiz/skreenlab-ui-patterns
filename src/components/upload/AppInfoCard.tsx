@@ -93,15 +93,16 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
     });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (onSelectHeroImages) {
       onSelectHeroImages(selectedImages, heroPositions);
     }
   }, [selectedImages, heroPositions, onSelectHeroImages]);
 
+  // Check if we have screenshots to display from app store data
   const hasScreenshots = appStoreMedia && 
-    (appStoreMedia.screenshots.length > 0 || 
-     (appStoreMedia.ipad_screenshots && appStoreMedia.ipad_screenshots.length > 0));
+    (appStoreMedia.screenshots?.length > 0 || 
+     (appStoreMedia.ipad_screenshots && appStoreMedia.ipad_screenshots?.length > 0));
 
   return (
     <div className="space-y-4">
@@ -133,123 +134,131 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
         </div>
       </div>
 
-      {hasScreenshots && (
+      {/* Always show this section if onSelectHeroImages is provided */}
+      {onSelectHeroImages && (
         <div className="border rounded-lg p-4">
           <h4 className="font-medium mb-3">App Store Screenshots</h4>
-          <Tabs defaultValue="phone">
-            <TabsList>
+          
+          {hasScreenshots ? (
+            <Tabs defaultValue="phone">
+              <TabsList>
+                {appStoreMedia?.screenshots && appStoreMedia.screenshots.length > 0 && (
+                  <TabsTrigger value="phone">Phone</TabsTrigger>
+                )}
+                {appStoreMedia?.ipad_screenshots && appStoreMedia.ipad_screenshots.length > 0 && (
+                  <TabsTrigger value="tablet">Tablet</TabsTrigger>
+                )}
+              </TabsList>
+              
               {appStoreMedia?.screenshots && appStoreMedia.screenshots.length > 0 && (
-                <TabsTrigger value="phone">Phone</TabsTrigger>
+                <TabsContent value="phone">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {appStoreMedia.screenshots.map((screenshot, index) => (
+                      <div key={index} className="relative">
+                        <div className="relative overflow-hidden rounded-lg aspect-[9/16]">
+                          <img 
+                            src={screenshot} 
+                            alt={`Screenshot ${index + 1}`} 
+                            className="object-cover w-full h-full"
+                          />
+                          <div className="absolute top-2 right-2 flex items-center space-x-2">
+                            <Checkbox 
+                              checked={selectedImages.includes(screenshot)}
+                              onCheckedChange={() => handleImageToggle(screenshot)}
+                              disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
+                            />
+                          </div>
+
+                          {selectedImages.includes(screenshot) && (
+                            <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
+                              {heroPositions[screenshot]}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {selectedImages.includes(screenshot) && (
+                          <div className="mt-2 flex items-center justify-center space-x-2">
+                            {[1, 2, 3].map(position => (
+                              <button
+                                key={position}
+                                onClick={() => updateHeroPosition(screenshot, position)}
+                                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                  heroPositions[screenshot] === position 
+                                    ? 'bg-primary text-white' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {position}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
               )}
+              
               {appStoreMedia?.ipad_screenshots && appStoreMedia.ipad_screenshots.length > 0 && (
-                <TabsTrigger value="tablet">Tablet</TabsTrigger>
+                <TabsContent value="tablet">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {appStoreMedia.ipad_screenshots.map((screenshot, index) => (
+                      <div key={index} className="relative">
+                        <div className="relative overflow-hidden rounded-lg aspect-[4/3]">
+                          <img 
+                            src={screenshot} 
+                            alt={`iPad Screenshot ${index + 1}`} 
+                            className="object-cover w-full h-full"
+                          />
+                          <div className="absolute top-2 right-2 flex items-center space-x-2">
+                            <Checkbox 
+                              checked={selectedImages.includes(screenshot)}
+                              onCheckedChange={() => handleImageToggle(screenshot)}
+                              disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
+                            />
+                          </div>
+
+                          {selectedImages.includes(screenshot) && (
+                            <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
+                              {heroPositions[screenshot]}
+                            </div>
+                          )}
+                        </div>
+
+                        {selectedImages.includes(screenshot) && (
+                          <div className="mt-2 flex items-center justify-center space-x-2">
+                            {[1, 2, 3].map(position => (
+                              <button
+                                key={position}
+                                onClick={() => updateHeroPosition(screenshot, position)}
+                                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                  heroPositions[screenshot] === position 
+                                    ? 'bg-primary text-white' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {position}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
               )}
-            </TabsList>
-            
-            {appStoreMedia?.screenshots && appStoreMedia.screenshots.length > 0 && (
-              <TabsContent value="phone">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {appStoreMedia.screenshots.map((screenshot, index) => (
-                    <div key={index} className="relative">
-                      <div className="relative overflow-hidden rounded-lg aspect-[9/16]">
-                        <img 
-                          src={screenshot} 
-                          alt={`Screenshot ${index + 1}`} 
-                          className="object-cover w-full h-full"
-                        />
-                        <div className="absolute top-2 right-2 flex items-center space-x-2">
-                          <Checkbox 
-                            checked={selectedImages.includes(screenshot)}
-                            onCheckedChange={() => handleImageToggle(screenshot)}
-                            disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
-                          />
-                        </div>
-
-                        {selectedImages.includes(screenshot) && (
-                          <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
-                            {heroPositions[screenshot]}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {selectedImages.includes(screenshot) && (
-                        <div className="mt-2 flex items-center justify-center space-x-2">
-                          {[1, 2, 3].map(position => (
-                            <button
-                              key={position}
-                              onClick={() => updateHeroPosition(screenshot, position)}
-                              className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                heroPositions[screenshot] === position 
-                                  ? 'bg-primary text-white' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {position}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-            )}
-            
-            {appStoreMedia?.ipad_screenshots && appStoreMedia.ipad_screenshots.length > 0 && (
-              <TabsContent value="tablet">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {appStoreMedia.ipad_screenshots.map((screenshot, index) => (
-                    <div key={index} className="relative">
-                      <div className="relative overflow-hidden rounded-lg aspect-[4/3]">
-                        <img 
-                          src={screenshot} 
-                          alt={`iPad Screenshot ${index + 1}`} 
-                          className="object-cover w-full h-full"
-                        />
-                        <div className="absolute top-2 right-2 flex items-center space-x-2">
-                          <Checkbox 
-                            checked={selectedImages.includes(screenshot)}
-                            onCheckedChange={() => handleImageToggle(screenshot)}
-                            disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
-                          />
-                        </div>
-
-                        {selectedImages.includes(screenshot) && (
-                          <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
-                            {heroPositions[screenshot]}
-                          </div>
-                        )}
-                      </div>
-
-                      {selectedImages.includes(screenshot) && (
-                        <div className="mt-2 flex items-center justify-center space-x-2">
-                          {[1, 2, 3].map(position => (
-                            <button
-                              key={position}
-                              onClick={() => updateHeroPosition(screenshot, position)}
-                              className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                heroPositions[screenshot] === position 
-                                  ? 'bg-primary text-white' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {position}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
-
-          {onSelectHeroImages && (
-            <div className="mt-3 text-sm text-gray-500">
-              Select up to {maxSelectedImages} screenshots as hero images ({selectedImages.length}/{maxSelectedImages} selected). Click on the numbers to set display order.
+            </Tabs>
+          ) : (
+            <div className="p-4 bg-gray-50 rounded-lg text-center">
+              <p className="text-gray-500">No screenshots available from the App Store.</p>
+              <p className="mt-2 text-sm text-gray-400">You can upload your own screenshots in the next step.</p>
             </div>
           )}
+
+          <div className="mt-3 text-sm text-gray-500">
+            Select up to {maxSelectedImages} screenshots as hero images ({selectedImages.length}/{maxSelectedImages} selected). 
+            {selectedImages.length > 0 && " Click on the numbers to set display order."}
+          </div>
         </div>
       )}
     </div>

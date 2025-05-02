@@ -90,40 +90,61 @@ export const useAppMetadata = (appStoreLink: string) => {
       // If app doesn't exist in database, fetch it from the store API
       if (!app) {
         console.log('App not found in database, fetching from API...');
-        // Call our edge function to fetch app data
-        const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-data', {
-          body: { appStoreLink }
-        });
-        
-        if (fetchError) {
-          console.error('Edge function error:', fetchError);
-          throw new Error(fetchError.message || 'Failed to fetch app data');
-        }
-        
-        if (!data || !data.appData) {
-          console.error('Invalid data returned from API:', data);
-          throw new Error('No app data returned from API');
-        }
+        try {
+          // Call our edge function to fetch app data
+          const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-data', {
+            body: { appStoreLink }
+          });
+          
+          if (fetchError) {
+            console.error('Edge function error:', fetchError);
+            throw new Error(fetchError.message || 'Failed to fetch app data');
+          }
+          
+          if (!data || !data.appData) {
+            console.error('Invalid data returned from API:', data);
+            throw new Error('No app data returned from API');
+          }
 
-        console.log('App data fetched from API:', data.appData);
-        
-        // Store app store media (screenshots, videos)
-        setAppStoreMedia({
-          screenshots: data.appData.screenshots || [],
-          ipad_screenshots: data.appData.ipad_screenshots || [],
-          preview_videos: data.appData.preview_videos || []
-        });
-        
-        // Create a new App object with the fetched data
-        app = {
-          id: crypto.randomUUID(), // Temporary ID for new app
-          name: data.appData.name || 'Unknown App',
-          platform: data.appData.platform || (appStoreLink.includes('apple') ? 'iOS' : 'Android'),
-          publisher: data.appData.developer || data.appData.publisher || 'Unknown Publisher',
-          icon_url: data.appData.icon_url || 'https://placekitten.com/512/512', // Fallback icon
-          screenshots_count: 0,
-          bundle_id: data.appData.bundle_id || data.appData.package_name || ''
-        };
+          console.log('App data fetched from API:', data.appData);
+          
+          // Store app store media (screenshots, videos)
+          setAppStoreMedia({
+            screenshots: data.appData.screenshots || [],
+            ipad_screenshots: data.appData.ipad_screenshots || [],
+            preview_videos: data.appData.preview_videos || []
+          });
+          
+          // Create a new App object with the fetched data
+          app = {
+            id: crypto.randomUUID(), // Temporary ID for new app
+            name: data.appData.name || 'Unknown App',
+            platform: data.appData.platform || (appStoreLink.includes('apple') ? 'iOS' : 'Android'),
+            publisher: data.appData.developer || data.appData.publisher || 'Unknown Publisher',
+            icon_url: data.appData.icon_url || 'https://placekitten.com/512/512', // Fallback icon
+            screenshots_count: 0,
+            bundle_id: data.appData.bundle_id || data.appData.package_name || ''
+          };
+        } catch (apiError) {
+          console.error('API fetch error:', apiError);
+          // Even if the API fetch fails, we'll create a minimal app object
+          app = {
+            id: crypto.randomUUID(),
+            name: 'Unknown App',
+            platform: appStoreLink.includes('apple') ? 'iOS' : 'Android',
+            publisher: 'Unknown Publisher',
+            icon_url: 'https://placekitten.com/512/512',
+            screenshots_count: 0,
+            bundle_id: ''
+          };
+          
+          // We'll still set up an empty app store media object
+          setAppStoreMedia({
+            screenshots: [],
+            ipad_screenshots: [],
+            preview_videos: []
+          });
+        }
       }
       
       if (!app) {

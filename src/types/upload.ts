@@ -11,5 +11,5 @@ export type UploadScreenshot = {
 export type StoreScreenshot = {
   url: string;
   isSelected: boolean;
-  heroPosition?: number; // Added to track position in hero images
+  heroPosition?: number; // Position in hero images (1, 2, 3) 
 };

@@ -17,7 +17,6 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   const [uploadedScreenshots, setUploadedScreenshots] = useState<UploadScreenshot[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isTabFocusedRef = useRef(true);
   
   // Save screenshots to sessionStorage when they change
   useEffect(() => {
@@ -57,19 +56,8 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
     }
   }, []);
 
-  // Monitor tab visibility without triggering navigation changes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      isTabFocusedRef.current = !document.hidden;
-      console.log('Tab focus changed, isTabFocused:', isTabFocusedRef.current);
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
+  // Remove tab visibility monitoring that was causing redirection
+  // We'll only warn on actual page unload, not tab switching
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -178,9 +166,8 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   // Only show confirmation when actually navigating away from the page, not when switching tabs
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show confirmation if there are screenshots AND the tab is still in focus
-      // This prevents the dialog from showing when just switching tabs
-      if (uploadedScreenshots.length > 0 && isTabFocusedRef.current) {
+      // Only show a confirmation dialog if there are screenshots
+      if (uploadedScreenshots.length > 0) {
         // Standard way to show a confirmation dialog when leaving
         e.preventDefault();
         e.returnValue = '';

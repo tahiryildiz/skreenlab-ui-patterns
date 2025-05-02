@@ -91,8 +91,8 @@ export const useAppMetadata = (appStoreLink: string) => {
       if (!app) {
         console.log('App not found in database, fetching from API...');
         try {
-          // Call our edge function to fetch app data
-          const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-data', {
+          // Call our new edge function to fetch app data
+          const { data, error: fetchError } = await supabase.functions.invoke('fetch-upload-app-data', {
             body: { appStoreLink }
           });
           

@@ -3,3 +3,6 @@ project_id = "ggvqdqyioldxbyislrev"
 
 [functions.fetch-app-data]
 verify_jwt = false
+
+[functions.fetch-upload-app-data]
+verify_jwt = false

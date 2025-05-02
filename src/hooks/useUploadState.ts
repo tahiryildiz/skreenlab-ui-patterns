@@ -28,6 +28,15 @@ export function useUploadState() {
             appMetadata,
             heroImages,
             heroVideos,
+            screenshots: screenshots.map(s => ({
+              dataUrl: s.dataUrl,
+              screenCategoryId: s.screenCategoryId,
+              uiElementIds: s.uiElementIds,
+              fileName: s.file?.name || 'screenshot.png',
+              fileType: s.file?.type || 'image/png',
+              fileSize: s.file?.size || 0,
+              hasFile: !!s.file
+            })),
             currentScreenshotIndex,
             tagStep
           };
@@ -40,7 +49,7 @@ export function useUploadState() {
 
     // Save state when component updates
     saveUploadState();
-  }, [step, appStoreLink, appMetadata, heroImages, heroVideos, currentScreenshotIndex, tagStep]);
+  }, [step, appStoreLink, appMetadata, heroImages, heroVideos, screenshots, currentScreenshotIndex, tagStep]);
   
   // Restore upload state from sessionStorage when returning to the page
   useEffect(() => {
@@ -54,8 +63,51 @@ export function useUploadState() {
           setAppMetadata(parsedState.appMetadata || null);
           setHeroImages(parsedState.heroImages || undefined);
           setHeroVideos(parsedState.heroVideos || undefined);
+          
+          // Restore screenshots with reconstructed File objects
+          if (parsedState.screenshots && Array.isArray(parsedState.screenshots)) {
+            const restoredScreenshots = parsedState.screenshots.map((s: any) => {
+              // Create a new object with the saved properties
+              let screenshot: UploadScreenshot = {
+                dataUrl: s.dataUrl,
+                screenCategoryId: s.screenCategoryId || null,
+                uiElementIds: s.uiElementIds || [],
+                file: null as any // We'll try to reconstruct this below
+              };
+              
+              // Try to reconstruct a File object from the dataUrl if possible
+              if (s.dataUrl && s.fileName) {
+                try {
+                  // Convert data URL to blob
+                  const arr = s.dataUrl.split(',');
+                  const mime = arr[0].match(/:(.*?);/)[1];
+                  const bstr = atob(arr[1]);
+                  let n = bstr.length;
+                  const u8arr = new Uint8Array(n);
+                  while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                  }
+                  
+                  // Create File object from blob
+                  const blob = new Blob([u8arr], { type: mime });
+                  screenshot.file = new File([blob], s.fileName, { type: s.fileType || mime });
+                } catch (error) {
+                  console.error('Error reconstructing File from dataUrl:', error);
+                }
+              }
+              
+              return screenshot;
+            });
+            
+            setScreenshots(restoredScreenshots);
+          } else {
+            setScreenshots([]);
+          }
+          
           setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
           setTagStep(parsedState.tagStep || 'category');
+          
+          console.log('Successfully restored upload state from sessionStorage');
         }
       } catch (error) {
         console.error('Error retrieving upload state:', error);

@@ -24,7 +24,7 @@ async function fetchItunesApiData(appId: string) {
   }
 }
 
-// Function to scrape the App Store page for additional data
+// Enhanced function to scrape the App Store page for additional data, with improved video extraction
 async function scrapeAppStorePage(appId: string) {
   try {
     const appStoreUrl = `https://apps.apple.com/us/app/id${appId}`;
@@ -54,34 +54,55 @@ async function scrapeAppStorePage(appId: string) {
     let previewVideos: string[] = [];
     let phoneScreenshots: string[] = [];
     
+    console.log(`Found ${scriptTags.length} script tags to analyze`);
+    
     for (let i = 0; i < scriptTags.length; i++) {
       const scriptContent = scriptTags[i].textContent || '';
       
       // Look for App Store data in JSON format
-      if (scriptContent.includes('"previewVideoUrl"') || scriptContent.includes('"screenshotUrl"')) {
+      if (scriptContent.includes('"previewVideoUrl"') || scriptContent.includes('"screenshotUrl"') || 
+          scriptContent.includes('"preview"') || scriptContent.includes('"video"')) {
         try {
-          // Extract JSON objects from the script content
-          const jsonMatches = scriptContent.match(/\{.*\}/gs);
+          console.log(`Found potential video data in script tag ${i}`);
+          
+          // Enhanced JSON object detection with more flexible regex
+          const jsonMatches = scriptContent.match(/(\{[\s\S]*?\})/g);
           if (jsonMatches) {
             for (const jsonStr of jsonMatches) {
               try {
+                // Try to parse the potential JSON
                 const jsonData = JSON.parse(jsonStr);
                 
-                // Extract preview videos
+                // More comprehensive video extraction with multiple patterns
                 if (jsonData.previewVideoUrl) {
                   previewVideos.push(jsonData.previewVideoUrl);
-                } else if (jsonData.attributes && jsonData.attributes.previews) {
+                  console.log(`Found direct video URL: ${jsonData.previewVideoUrl}`);
+                } 
+                else if (jsonData.preview && jsonData.preview.video) {
+                  previewVideos.push(jsonData.preview.video);
+                  console.log(`Found nested video URL: ${jsonData.preview.video}`);
+                }
+                else if (jsonData.attributes && jsonData.attributes.previews) {
                   jsonData.attributes.previews.forEach((preview: any) => {
-                    if (preview.url) previewVideos.push(preview.url);
+                    if (preview.url) {
+                      previewVideos.push(preview.url);
+                      console.log(`Found preview URL in attributes: ${preview.url}`);
+                    }
                   });
+                }
+                else if (jsonData.attributes && jsonData.attributes.previewVideoUrl) {
+                  previewVideos.push(jsonData.attributes.previewVideoUrl);
+                  console.log(`Found video URL in attributes: ${jsonData.attributes.previewVideoUrl}`);
                 }
                 
                 // Extract screenshots
                 if (jsonData.attributes && jsonData.attributes.screenshotUrls) {
                   phoneScreenshots = jsonData.attributes.screenshotUrls;
+                  console.log(`Found ${phoneScreenshots.length} screenshots`);
                 }
               } catch (e) {
                 // Skip invalid JSON
+                console.log(`Skipping invalid JSON: ${e.message}`);
               }
             }
           }
@@ -91,30 +112,79 @@ async function scrapeAppStorePage(appId: string) {
       }
     }
     
-    // Fallback method: look for video elements
+    // Improved video element detection
     if (previewVideos.length === 0) {
+      console.log("No videos found in JSON, looking for video elements...");
       const videoElements = doc.querySelectorAll('video');
+      console.log(`Found ${videoElements.length} video elements`);
+      
       for (let i = 0; i < videoElements.length; i++) {
         const sourceElements = videoElements[i].querySelectorAll('source');
         for (let j = 0; j < sourceElements.length; j++) {
           const src = sourceElements[j].getAttribute('src');
           if (src && !previewVideos.includes(src)) {
             previewVideos.push(src);
+            console.log(`Found video source URL: ${src}`);
           }
+        }
+        
+        // Check for src attribute directly on video element
+        const videoSrc = videoElements[i].getAttribute('src');
+        if (videoSrc && !previewVideos.includes(videoSrc)) {
+          previewVideos.push(videoSrc);
+          console.log(`Found direct video URL: ${videoSrc}`);
+        }
+        
+        // Look for data attributes that might contain video URLs
+        const dataSource = videoElements[i].getAttribute('data-video-source') || 
+                           videoElements[i].getAttribute('data-src');
+        if (dataSource && !previewVideos.includes(dataSource)) {
+          previewVideos.push(dataSource);
+          console.log(`Found video in data attribute: ${dataSource}`);
         }
       }
     }
 
     // Fallback for screenshots: look for image elements in specific app preview sections
     if (phoneScreenshots.length === 0) {
+      console.log("Looking for screenshot image elements...");
       const imageElements = doc.querySelectorAll('.we-screenshot-viewer__screenshots img');
+      console.log(`Found ${imageElements.length} screenshot image elements`);
+      
       for (let i = 0; i < imageElements.length; i++) {
         const src = imageElements[i].getAttribute('src');
         if (src) {
           phoneScreenshots.push(src);
+          console.log(`Found screenshot URL: ${src}`);
+        }
+      }
+      
+      // Secondary fallback for screenshots
+      if (phoneScreenshots.length === 0) {
+        const allImages = doc.querySelectorAll('picture img, [role="img"] img');
+        console.log(`Fallback: Found ${allImages.length} potential screenshot images`);
+        
+        // Filter images to only include likely screenshots (larger images)
+        for (let i = 0; i < allImages.length; i++) {
+          const src = allImages[i].getAttribute('src');
+          const alt = allImages[i].getAttribute('alt') || '';
+          if (src && 
+              src.includes('screenshot') || 
+              alt.toLowerCase().includes('screenshot') || 
+              src.includes('screen') ||
+              (src.includes('large') && !src.includes('icon'))) {
+            phoneScreenshots.push(src);
+            console.log(`Found potential screenshot URL: ${src}`);
+          }
         }
       }
     }
+    
+    // Deduplicate videos and screenshots
+    previewVideos = [...new Set(previewVideos)];
+    phoneScreenshots = [...new Set(phoneScreenshots)];
+    
+    console.log(`After deduplication: ${previewVideos.length} videos and ${phoneScreenshots.length} screenshots`);
     
     return { 
       scrapedPreviewVideos: previewVideos,

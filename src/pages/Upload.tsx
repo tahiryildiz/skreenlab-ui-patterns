@@ -41,22 +41,8 @@ const Upload = () => {
   // Screenshot upload handling
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
   
-  // Handle page visibility changes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // We don't need to do anything special when visibility changes
-      // as our state is now persisted in sessionStorage
-      if (document.visibilityState === 'visible') {
-        console.log('Upload page is now visible again');
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
+  // Removing the visibilitychange event listener entirely as it's not needed
+  // since we're now using sessionStorage for state persistence
   
   const handleSubmit = () => {
     uploadScreenshots(screenshots, appMetadata, user, clearUploadState, heroImages, heroVideos);

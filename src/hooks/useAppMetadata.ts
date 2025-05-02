@@ -6,8 +6,19 @@ import { toast } from 'sonner';
 
 export interface AppStoreMedia {
   screenshots: string[];
-  ipad_screenshots?: string[];
   preview_videos?: string[];
+}
+
+export interface AppStoreDetails {
+  category?: string;
+  rating?: number;
+  rating_count?: number;
+  description?: string;
+  price?: number;
+  currency?: string;
+  content_rating?: string;
+  version?: string;
+  release_notes?: string;
 }
 
 export const useAppMetadata = (appStoreLink: string) => {
@@ -15,6 +26,7 @@ export const useAppMetadata = (appStoreLink: string) => {
   const [error, setError] = useState<string | null>(null);
   const [appData, setAppData] = useState<App | null>(null);
   const [appStoreMedia, setAppStoreMedia] = useState<AppStoreMedia | null>(null);
+  const [appStoreDetails, setAppStoreDetails] = useState<AppStoreDetails | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Validate the app store link
@@ -111,8 +123,20 @@ export const useAppMetadata = (appStoreLink: string) => {
           // Store app store media (screenshots, videos)
           setAppStoreMedia({
             screenshots: data.appData.screenshots || [],
-            ipad_screenshots: data.appData.ipad_screenshots || [],
             preview_videos: data.appData.preview_videos || []
+          });
+          
+          // Store additional app details
+          setAppStoreDetails({
+            category: data.appData.category,
+            rating: data.appData.rating,
+            rating_count: data.appData.rating_count,
+            description: data.appData.description,
+            price: data.appData.price,
+            currency: data.appData.currency,
+            content_rating: data.appData.content_rating,
+            version: data.appData.version,
+            release_notes: data.appData.release_notes
           });
           
           // Create a new App object with the fetched data
@@ -141,9 +165,10 @@ export const useAppMetadata = (appStoreLink: string) => {
           // We'll still set up an empty app store media object
           setAppStoreMedia({
             screenshots: [],
-            ipad_screenshots: [],
             preview_videos: []
           });
+          
+          setAppStoreDetails(null);
         }
       }
       
@@ -184,9 +209,12 @@ export const useAppMetadata = (appStoreLink: string) => {
           bundle_id: appData.bundle_id || 
                     appData.name?.toLowerCase().replace(/\s+/g, '') || 
                     'unknown',
-          description: '',
+          description: appStoreDetails?.description || '',
           app_store_url: appStoreLink.includes('apple') ? appStoreLink : null,
           play_store_url: appStoreLink.includes('play.google.com') ? appStoreLink : null,
+          category: appStoreDetails?.category || null,
+          rating: appStoreDetails?.rating || null,
+          rating_count: appStoreDetails?.rating_count || null,
           updated_at: new Date().toISOString()
         };
         
@@ -244,6 +272,7 @@ export const useAppMetadata = (appStoreLink: string) => {
     error,
     appData,
     appStoreMedia,
+    appStoreDetails,
     submitting,
     fetchAppData,
     saveAppData,

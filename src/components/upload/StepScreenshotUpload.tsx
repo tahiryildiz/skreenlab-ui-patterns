@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, X, ImageIcon } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
+import { ImageUp, ArrowLeft, Trash } from 'lucide-react';
 import { UploadScreenshot } from '@/types/upload';
+import { toast } from 'sonner';
 
 interface StepScreenshotUploadProps {
   onUpload: (screenshots: UploadScreenshot[]) => void;
@@ -14,61 +15,72 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   onUpload,
   onBack 
 }) => {
-  const [uploadedScreenshots, setUploadedScreenshots] = useState<UploadScreenshot[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [screenshots, setScreenshots] = useState<UploadScreenshot[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Save screenshots to sessionStorage when they change
-  useEffect(() => {
-    if (uploadedScreenshots.length > 0) {
-      // Only store necessary data to avoid large objects
-      const screenshotsToStore = uploadedScreenshots.map(screenshot => ({
-        dataUrl: screenshot.dataUrl,
-        screenCategoryId: screenshot.screenCategoryId,
-        uiElementIds: screenshot.uiElementIds,
-      }));
-      
-      try {
-        sessionStorage.setItem('uploadedScreenshots', JSON.stringify(screenshotsToStore));
-      } catch (error) {
-        console.error('Error storing screenshots in session storage:', error);
-      }
-    }
-  }, [uploadedScreenshots]);
-  
-  // Restore screenshots from sessionStorage on component mount
-  useEffect(() => {
-    try {
-      const storedScreenshots = sessionStorage.getItem('uploadedScreenshots');
-      if (storedScreenshots) {
-        const parsedScreenshots = JSON.parse(storedScreenshots);
-        
-        // Recreate the File objects from stored data
-        // Note: We can't fully recreate File objects from sessionStorage
-        // So we'll only restore the screenshots if they were just added this session
-        setUploadedScreenshots(parsedScreenshots.map((screenshot: any, index: number) => ({
-          ...screenshot,
-          file: new File([], `restored-screenshot-${index}.png`, { type: 'image/png' })
-        })));
-      }
-    } catch (error) {
-      console.error('Error retrieving screenshots from session storage:', error);
-    }
-  }, []);
 
-  // Remove tab visibility monitoring that was causing redirection
-  // We'll only warn on actual page unload, not tab switching
-
+  // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      processFiles(Array.from(e.target.files));
-    }
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const newScreenshots: UploadScreenshot[] = [];
+
+    // Convert selected files to data URLs and create screenshot objects
+    const promises = Array.from(files).map((file) => {
+      return new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target && typeof event.target.result === 'string') {
+            newScreenshots.push({
+              file,
+              dataUrl: event.target.result,
+              screenCategoryId: null,
+              uiElementIds: []
+            });
+            resolve();
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(promises).then(() => {
+      setScreenshots((prev) => [...prev, ...newScreenshots]);
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    });
   };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+  // Handle file selection via drag and drop
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    
+    const droppedFiles = e.dataTransfer.files;
+    if (!droppedFiles || droppedFiles.length === 0) return;
+    
+    // Filter for image files only
+    const imageFiles = Array.from(droppedFiles).filter(
+      file => file.type.startsWith('image/')
+    );
+    
+    if (imageFiles.length === 0) {
+      toast.error("Please upload image files only.");
+      return;
+    }
+    
+    // Create a fake event to reuse the file handling logic
+    const mockEvent = {
+      target: {
+        files: imageFiles
+      }
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    
+    handleFileChange(mockEvent);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -76,202 +88,128 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
     e.stopPropagation();
   };
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(Array.from(e.dataTransfer.files));
-    }
-  };
-
-  const processFiles = (files: File[]) => {
-    const imageFiles = files.filter(file => 
-      file.type === 'image/png' || 
-      file.type === 'image/jpeg' || 
-      file.type === 'image/jpg'
-    );
-    
-    if (imageFiles.length === 0) {
-      toast.error('Please upload PNG or JPEG images only');
-      return;
-    }
-    
-    if (imageFiles.length > 20) {
-      toast.error('Maximum 20 images can be uploaded at once');
-      return;
-    }
-    
-    const newScreenshots: UploadScreenshot[] = [];
-    
-    imageFiles.forEach(file => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          newScreenshots.push({
-            file,
-            dataUrl: e.target.result as string,
-            screenCategoryId: null,
-            uiElementIds: []
-          });
-          
-          if (newScreenshots.length === imageFiles.length) {
-            setUploadedScreenshots(prev => [...prev, ...newScreenshots]);
-          }
-        }
-      };
-      
-      reader.readAsDataURL(file);
-    });
-  };
-
+  // Handle screenshot removal
   const handleRemoveScreenshot = (index: number) => {
-    setUploadedScreenshots(prev => {
-      const updated = prev.filter((_, i) => i !== index);
-      
-      // If there are no more screenshots, clear sessionStorage
-      if (updated.length === 0) {
-        sessionStorage.removeItem('uploadedScreenshots');
-      }
-      
-      return updated;
-    });
+    setScreenshots((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleBrowse = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const handleContinue = () => {
-    if (uploadedScreenshots.length === 0) {
-      toast.error('Please upload at least one screenshot');
+  // Handle submit
+  const handleSubmit = () => {
+    if (screenshots.length === 0) {
+      toast.error("Please upload at least one screenshot.");
       return;
     }
-    
-    // Store the full screenshots object directly in the parent component
-    onUpload(uploadedScreenshots);
-    
-    // Clear session storage since we're moving to the next step
-    sessionStorage.removeItem('uploadedScreenshots');
+
+    onUpload(screenshots);
   };
 
-  // Only show confirmation when actually navigating away from the page, not when switching tabs
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show a confirmation dialog if there are screenshots
-      if (uploadedScreenshots.length > 0) {
-        // Standard way to show a confirmation dialog when leaving
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
-      }
-    };
+  // Save upload state before user navigates away - no page visibility event handling
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (screenshots.length > 0) {
+      const message = "You have unsaved screenshots. Are you sure you want to leave?";
+      e.returnValue = message;
+      return message;
+    }
+  };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
+  React.useEffect(() => {
+    // Only add the beforeunload event listener if there are screenshots
+    if (screenshots.length > 0) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [uploadedScreenshots]);
+  }, [screenshots]);
 
   return (
     <Card className="border-0 shadow-none">
       <CardContent className="pt-6">
         <div className="mb-6 text-center">
           <div className="bg-primary/10 inline-flex rounded-full p-3 mb-4">
-            <ImageIcon className="h-6 w-6 text-primary" />
+            <ImageUp className="h-6 w-6 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Upload Screenshots</h2>
-          <p className="text-gray-500">
-            Upload one or multiple screenshots (maximum 20)
+          <h2 className="text-2xl font-bold">Upload Screenshots</h2>
+          <p className="text-gray-500 mt-2">
+            Upload screenshots for your app
           </p>
         </div>
-        
+
         <div 
-          className={`border-2 border-dashed rounded-lg p-8 text-center ${isDragging ? 'border-primary bg-primary/5' : 'border-gray-200'}`}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors mb-6"
+          onClick={() => fileInputRef.current?.click()}
           onDrop={handleDrop}
+          onDragOver={handleDragOver}
         >
-          <Upload className="h-10 w-10 text-gray-400 mx-auto mb-4" />
-          <p className="text-lg font-medium mb-2">
-            Drag and drop your screenshots here
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            PNG, JPG up to 10MB each
-          </p>
-          <Button 
-            type="button" 
-            onClick={handleBrowse}
-            variant="secondary"
-          >
-            Browse Files
-          </Button>
-          <input 
-            type="file"
+          <input
             ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/png, image/jpeg, image/jpg"
+            type="file"
+            accept="image/*"
             multiple
+            onChange={handleFileChange}
             className="hidden"
           />
+          <ImageUp className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+          <p className="font-medium mb-1">
+            {uploading ? 'Processing...' : 'Drop your screenshots here'}
+          </p>
+          <p className="text-sm text-gray-500">
+            or <span className="text-primary font-medium">click to browse</span>
+          </p>
         </div>
-        
-        {uploadedScreenshots.length > 0 && (
-          <div className="mt-6">
-            <h3 className="font-medium mb-3">
-              Uploaded Screenshots ({uploadedScreenshots.length})
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {uploadedScreenshots.map((screenshot, index) => (
-                <div 
-                  key={index} 
-                  className="relative rounded-lg overflow-hidden aspect-[9/19.5] border bg-gray-50"
-                >
-                  <img 
-                    src={screenshot.dataUrl} 
+
+        {screenshots.length > 0 && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4 mb-6">
+              {screenshots.map((screenshot, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={screenshot.dataUrl}
                     alt={`Screenshot ${index + 1}`}
-                    className="w-full h-full object-contain"
+                    className="w-full h-auto aspect-[9/16] object-cover rounded-md"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveScreenshot(index)}
-                    className="absolute top-2 right-2 bg-black/50 rounded-full p-1"
-                    aria-label="Remove screenshot"
+                    className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <X className="h-4 w-4 text-white" />
+                    <Trash className="h-4 w-4 text-red-500" />
                   </button>
                 </div>
               ))}
             </div>
-          </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant="outline"
+                onClick={onBack}
+                className="flex-1"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                className="flex-1"
+                disabled={uploading || screenshots.length === 0}
+              >
+                Continue
+              </Button>
+            </div>
+          </>
         )}
-        
-        <div className="flex flex-col sm:flex-row gap-3 mt-6">
+
+        {screenshots.length === 0 && (
           <Button
             variant="outline"
             onClick={onBack}
-            className="flex-1"
+            className="w-full"
           >
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <Button 
-            onClick={handleContinue}
-            className="flex-1"
-            disabled={uploadedScreenshots.length === 0}
-          >
-            Continue
-          </Button>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

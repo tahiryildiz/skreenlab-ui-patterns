@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Star } from 'lucide-react';
 import { App } from '@/types';
-import { AppStoreMedia } from '@/hooks/useAppMetadata';
+import { AppStoreMedia, AppStoreDetails } from '@/hooks/useAppMetadata';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -10,6 +10,7 @@ interface AppInfoCardProps {
   appData: App;
   appStoreLink: string;
   appStoreMedia?: AppStoreMedia | null;
+  appStoreDetails?: AppStoreDetails | null;
   onSelectHeroImages?: (urls: string[], positions: Record<string, number>) => void;
 }
 
@@ -17,6 +18,7 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
   appData, 
   appStoreLink,
   appStoreMedia,
+  appStoreDetails,
   onSelectHeroImages 
 }) => {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -101,8 +103,34 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
 
   // Check if we have screenshots to display from app store data
   const hasScreenshots = appStoreMedia && 
-    (appStoreMedia.screenshots?.length > 0 || 
-     (appStoreMedia.ipad_screenshots && appStoreMedia.ipad_screenshots?.length > 0));
+    (appStoreMedia.screenshots?.length > 0);
+    
+  const hasVideos = appStoreMedia && 
+    (appStoreMedia.preview_videos && appStoreMedia.preview_videos.length > 0);
+
+  // Format app rating to display with stars
+  const renderRating = () => {
+    if (!appStoreDetails?.rating) return null;
+    
+    return (
+      <div className="flex items-center mt-1">
+        <div className="flex items-center mr-2">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star 
+              key={star} 
+              className={`h-3 w-3 ${star <= Math.round(appStoreDetails.rating) 
+                ? 'text-yellow-400 fill-yellow-400' 
+                : 'text-gray-300'}`} 
+            />
+          ))}
+        </div>
+        <span className="text-xs text-gray-500">
+          {appStoreDetails.rating.toFixed(1)} 
+          {appStoreDetails.rating_count && ` (${appStoreDetails.rating_count.toLocaleString()})`}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -116,8 +144,24 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
         )}
         
         <div className="flex-1">
-          <h3 className="font-medium text-lg">{appData.name}</h3>
+          <div className="flex items-center">
+            <h3 className="font-medium text-lg">{appData.name}</h3>
+            {appStoreDetails?.price !== undefined && appStoreDetails.price > 0 ? (
+              <span className="ml-2 text-sm text-green-600 font-medium">
+                {appStoreDetails.currency === 'USD' ? '$' : ''}
+                {appStoreDetails.price.toFixed(2)}
+              </span>
+            ) : (
+              <span className="ml-2 text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">Free</span>
+            )}
+          </div>
           <p className="text-gray-500 text-sm">{appData.publisher}</p>
+          {appStoreDetails?.category && (
+            <span className="text-xs text-gray-500">
+              {appStoreDetails.category} • {appStoreDetails.content_rating || 'Not Rated'}
+            </span>
+          )}
+          {renderRating()}
           <div className="flex items-center mt-1">
             <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 rounded-full mr-2">
               {appData.platform}
@@ -137,23 +181,23 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
       {/* Always show this section if onSelectHeroImages is provided */}
       {onSelectHeroImages && (
         <div className="border rounded-lg p-4">
-          <h4 className="font-medium mb-3">App Store Screenshots</h4>
+          <h4 className="font-medium mb-3">App Store Media</h4>
           
-          {hasScreenshots ? (
-            <Tabs defaultValue="phone">
+          {(hasScreenshots || hasVideos) ? (
+            <Tabs defaultValue="screenshots">
               <TabsList>
-                {appStoreMedia?.screenshots && appStoreMedia.screenshots.length > 0 && (
-                  <TabsTrigger value="phone">Phone</TabsTrigger>
+                {hasScreenshots && (
+                  <TabsTrigger value="screenshots">Screenshots</TabsTrigger>
                 )}
-                {appStoreMedia?.ipad_screenshots && appStoreMedia.ipad_screenshots.length > 0 && (
-                  <TabsTrigger value="tablet">Tablet</TabsTrigger>
+                {hasVideos && (
+                  <TabsTrigger value="videos">Videos</TabsTrigger>
                 )}
               </TabsList>
               
-              {appStoreMedia?.screenshots && appStoreMedia.screenshots.length > 0 && (
-                <TabsContent value="phone">
+              {hasScreenshots && (
+                <TabsContent value="screenshots">
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {appStoreMedia.screenshots.map((screenshot, index) => (
+                    {appStoreMedia?.screenshots.map((screenshot, index) => (
                       <div key={index} className="relative">
                         <div className="relative overflow-hidden rounded-lg aspect-[9/16]">
                           <img 
@@ -199,49 +243,19 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
                 </TabsContent>
               )}
               
-              {appStoreMedia?.ipad_screenshots && appStoreMedia.ipad_screenshots.length > 0 && (
-                <TabsContent value="tablet">
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {appStoreMedia.ipad_screenshots.map((screenshot, index) => (
-                      <div key={index} className="relative">
-                        <div className="relative overflow-hidden rounded-lg aspect-[4/3]">
-                          <img 
-                            src={screenshot} 
-                            alt={`iPad Screenshot ${index + 1}`} 
-                            className="object-cover w-full h-full"
-                          />
-                          <div className="absolute top-2 right-2 flex items-center space-x-2">
-                            <Checkbox 
-                              checked={selectedImages.includes(screenshot)}
-                              onCheckedChange={() => handleImageToggle(screenshot)}
-                              disabled={!selectedImages.includes(screenshot) && selectedImages.length >= maxSelectedImages}
-                            />
-                          </div>
-
-                          {selectedImages.includes(screenshot) && (
-                            <div className="absolute bottom-2 right-2 bg-white rounded-full h-8 w-8 flex items-center justify-center border-2 border-primary text-primary font-bold">
-                              {heroPositions[screenshot]}
-                            </div>
-                          )}
-                        </div>
-
-                        {selectedImages.includes(screenshot) && (
-                          <div className="mt-2 flex items-center justify-center space-x-2">
-                            {[1, 2, 3].map(position => (
-                              <button
-                                key={position}
-                                onClick={() => updateHeroPosition(screenshot, position)}
-                                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                  heroPositions[screenshot] === position 
-                                    ? 'bg-primary text-white' 
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                {position}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+              {hasVideos && (
+                <TabsContent value="videos">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {appStoreMedia?.preview_videos?.map((video, index) => (
+                      <div key={index} className="relative overflow-hidden rounded-lg">
+                        <video 
+                          src={video} 
+                          controls 
+                          className="w-full" 
+                          poster={appStoreMedia.screenshots[0]}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
                       </div>
                     ))}
                   </div>
@@ -250,7 +264,7 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
             </Tabs>
           ) : (
             <div className="p-4 bg-gray-50 rounded-lg text-center">
-              <p className="text-gray-500">No screenshots available from the App Store.</p>
+              <p className="text-gray-500">No screenshots or videos available from the App Store.</p>
               <p className="mt-2 text-sm text-gray-400">You can upload your own screenshots in the next step.</p>
             </div>
           )}
@@ -258,6 +272,18 @@ const AppInfoCard: React.FC<AppInfoCardProps> = ({
           <div className="mt-3 text-sm text-gray-500">
             Select up to {maxSelectedImages} screenshots as hero images ({selectedImages.length}/{maxSelectedImages} selected). 
             {selectedImages.length > 0 && " Click on the numbers to set display order."}
+          </div>
+        </div>
+      )}
+      
+      {/* App Description */}
+      {appStoreDetails?.description && (
+        <div className="border rounded-lg p-4">
+          <h4 className="font-medium mb-2">Description</h4>
+          <div className="text-sm text-gray-600 max-h-36 overflow-y-auto">
+            {appStoreDetails.description.split('\n').map((paragraph, idx) => (
+              paragraph ? <p key={idx} className="mb-2">{paragraph}</p> : null
+            ))}
           </div>
         </div>
       )}

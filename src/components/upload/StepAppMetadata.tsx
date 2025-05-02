@@ -24,6 +24,7 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
     error, 
     appData, 
     appStoreMedia,
+    appStoreDetails,
     submitting, 
     saveAppData,
     retryFetch
@@ -77,6 +78,7 @@ const StepAppMetadata: React.FC<StepAppMetadataProps> = ({
               appData={appData} 
               appStoreLink={appStoreLink} 
               appStoreMedia={appStoreMedia}
+              appStoreDetails={appStoreDetails}
               onSelectHeroImages={handleSelectHeroImages}
             />
             

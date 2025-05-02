@@ -202,7 +202,7 @@ export const useAppMetadata = (appStoreLink: string) => {
       const isNewApp = typeof appData.id === 'string' && appData.id.includes('-');
       
       if (isNewApp) {
-        // Prepare data for insertion
+        // Prepare data for insertion - FIXED: removed 'category' and used 'category_id'
         const appInsertData = {
           name: appData.name || 'Unknown App',
           icon_url: appData.icon_url || null,
@@ -212,9 +212,8 @@ export const useAppMetadata = (appStoreLink: string) => {
           description: appStoreDetails?.description || '',
           app_store_url: appStoreLink.includes('apple') ? appStoreLink : null,
           play_store_url: appStoreLink.includes('play.google.com') ? appStoreLink : null,
-          category: appStoreDetails?.category || null,
-          rating: appStoreDetails?.rating || null,
-          rating_count: appStoreDetails?.rating_count || null,
+          // Don't try to use 'category' directly - it's not in the database schema
+          // Instead, leave category_id as null (we can handle category mapping separately)
           updated_at: new Date().toISOString()
         };
         

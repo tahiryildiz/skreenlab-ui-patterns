@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { App } from '@/types';
@@ -148,6 +149,7 @@ export function useUploadState() {
     setScreenshots([]);
     setCurrentScreenshotIndex(0);
     setTagStep('category');
+    sessionStorage.removeItem('uploadState');
   };
 
   return {

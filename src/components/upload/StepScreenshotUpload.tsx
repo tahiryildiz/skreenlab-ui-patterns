@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ImageUp, ArrowLeft, Trash } from 'lucide-react';
@@ -18,6 +18,43 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [screenshots, setScreenshots] = useState<UploadScreenshot[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load any saved screenshots from sessionStorage
+  useEffect(() => {
+    try {
+      const savedScreenshots = sessionStorage.getItem('tempScreenshots');
+      if (savedScreenshots) {
+        // We can only save the data URLs, not the File objects, so we need special handling
+        const parsedData = JSON.parse(savedScreenshots);
+        setScreenshots(parsedData);
+      }
+    } catch (error) {
+      console.error('Error loading saved screenshots:', error);
+    }
+  }, []);
+
+  // Save screenshots to sessionStorage when they change
+  useEffect(() => {
+    if (screenshots.length > 0) {
+      try {
+        // Save only what can be serialized (dataUrl, screenCategoryId, uiElementIds)
+        const serializableData = screenshots.map(screenshot => ({
+          dataUrl: screenshot.dataUrl,
+          screenCategoryId: screenshot.screenCategoryId,
+          uiElementIds: screenshot.uiElementIds,
+          // We can't serialize the File object directly
+          fileName: screenshot.file.name,
+          fileType: screenshot.file.type,
+          fileSize: screenshot.file.size,
+          // Include a flag to track if we have the actual file object
+          hasFile: true
+        }));
+        sessionStorage.setItem('tempScreenshots', JSON.stringify(serializableData));
+      } catch (error) {
+        console.error('Error saving screenshots to sessionStorage:', error);
+      }
+    }
+  }, [screenshots]);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +127,14 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
 
   // Handle screenshot removal
   const handleRemoveScreenshot = (index: number) => {
-    setScreenshots((prev) => prev.filter((_, i) => i !== index));
+    setScreenshots((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      // If we've removed all screenshots, clear sessionStorage
+      if (updated.length === 0) {
+        sessionStorage.removeItem('tempScreenshots');
+      }
+      return updated;
+    });
   };
 
   // Handle submit
@@ -100,28 +144,13 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
       return;
     }
 
+    // Clear temp storage since we're moving to the next step
+    sessionStorage.removeItem('tempScreenshots');
     onUpload(screenshots);
   };
 
-  // Save upload state before user navigates away - no page visibility event handling
-  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-    if (screenshots.length > 0) {
-      const message = "You have unsaved screenshots. Are you sure you want to leave?";
-      e.returnValue = message;
-      return message;
-    }
-  };
-
-  React.useEffect(() => {
-    // Only add the beforeunload event listener if there are screenshots
-    if (screenshots.length > 0) {
-      window.addEventListener('beforeunload', handleBeforeUnload);
-    }
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [screenshots]);
+  // Don't use beforeunload here - it would trigger when switching tabs
+  // Instead, rely on the sessionStorage to persist state
 
   return (
     <Card className="border-0 shadow-none">

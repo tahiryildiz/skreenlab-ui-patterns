@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import UploadProgress from '@/components/upload/UploadProgress';
@@ -40,6 +40,23 @@ const Upload = () => {
   
   // Screenshot upload handling
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
+  
+  // Handle page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // We don't need to do anything special when visibility changes
+      // as our state is now persisted in sessionStorage
+      if (document.visibilityState === 'visible') {
+        console.log('Upload page is now visible again');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
   
   const handleSubmit = () => {
     uploadScreenshots(screenshots, appMetadata, user, clearUploadState, heroImages, heroVideos);

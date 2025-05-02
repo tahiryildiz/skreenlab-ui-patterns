@@ -1,9 +1,11 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { App } from '@/types';
 import { UploadScreenshot } from '@/types/upload';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { User } from '@supabase/supabase-js';
 
 export const useScreenshotUpload = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);

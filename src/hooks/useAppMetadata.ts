@@ -1,25 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { App } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AppStoreMedia, AppStoreDetails } from '@/types/appMetadata';
+import { isValidStoreLink } from '@/utils/appStoreUtils';
+import { findExistingAppByStoreUrl, fetchAppDataFromApi, saveApp } from '@/services/appDataService';
 
-export interface AppStoreMedia {
-  screenshots: string[];
-  preview_videos?: string[];
-}
-
-export interface AppStoreDetails {
-  category?: string;
-  rating?: number;
-  rating_count?: number;
-  description?: string;
-  price?: number;
-  currency?: string;
-  content_rating?: string;
-  version?: string;
-  release_notes?: string;
-}
+export { AppStoreMedia, AppStoreDetails } from '@/types/appMetadata';
 
 export const useAppMetadata = (appStoreLink: string) => {
   const [loading, setLoading] = useState(true);
@@ -28,16 +15,6 @@ export const useAppMetadata = (appStoreLink: string) => {
   const [appStoreMedia, setAppStoreMedia] = useState<AppStoreMedia | null>(null);
   const [appStoreDetails, setAppStoreDetails] = useState<AppStoreDetails | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // Validate the app store link
-  const isValidStoreLink = (link: string): boolean => {
-    return Boolean(
-      link && 
-      (link.includes('apps.apple.com') || 
-       link.includes('play.google.com') || 
-       link.includes('appstore.com'))
-    );
-  };
 
   useEffect(() => {
     if (appStoreLink) {
@@ -63,61 +40,15 @@ export const useAppMetadata = (appStoreLink: string) => {
     
     try {
       // First, check if this app already exists in our database by store URL
-      let app: App | null = null;
-      
-      if (appStoreLink.includes('apps.apple.com') || appStoreLink.includes('appstore.com')) {
-        const { data: existingAppData, error: dbError } = await supabase
-          .from('apps')
-          .select('*')
-          .eq('app_store_url', appStoreLink)
-          .maybeSingle();
-          
-        if (dbError) {
-          console.error('Database query error:', dbError);
-          throw new Error('Failed to check database for existing app');
-        }
-          
-        if (existingAppData) {
-          app = existingAppData as unknown as App;
-          console.log('Found existing iOS app:', app);
-        }
-      } else if (appStoreLink.includes('play.google.com')) {
-        const { data: existingAppData, error: dbError } = await supabase
-          .from('apps')
-          .select('*')
-          .eq('play_store_url', appStoreLink)
-          .maybeSingle();
-          
-        if (dbError) {
-          console.error('Database query error:', dbError);
-          throw new Error('Failed to check database for existing app');
-        }
-          
-        if (existingAppData) {
-          app = existingAppData as unknown as App;
-          console.log('Found existing Android app:', app);
-        }
-      }
+      let app: App | null = await findExistingAppByStoreUrl(appStoreLink);
       
       // If app doesn't exist in database, fetch it from the store API
       if (!app) {
         console.log('App not found in database, fetching from API...');
         try {
-          // Call our new enhanced edge function
-          const { data, error: fetchError } = await supabase.functions.invoke('fetch-app-store-complete', {
-            body: { appStoreLink }
-          });
+          // Call our enhanced edge function
+          const data = await fetchAppDataFromApi(appStoreLink);
           
-          if (fetchError) {
-            console.error('Edge function error:', fetchError);
-            throw new Error(fetchError.message || 'Failed to fetch app data');
-          }
-          
-          if (!data || !data.appData) {
-            console.error('Invalid data returned from API:', data);
-            throw new Error('No app data returned from API');
-          }
-
           console.log('App data fetched from enhanced API:', data.appData);
           
           // Store app store media (screenshots, videos)
@@ -198,78 +129,10 @@ export const useAppMetadata = (appStoreLink: string) => {
     setSubmitting(true);
     
     try {
-      // Only insert if this is a newly generated app (with temporary UUID)
-      const isNewApp = typeof appData.id === 'string' && appData.id.includes('-');
-      
-      if (isNewApp) {
-        // First, try to find a matching category in our app_categories table
-        let categoryId: string | null = null;
-        
-        if (appStoreDetails?.category) {
-          // Look for a matching category in our app_categories table
-          const { data: categoryData, error: categoryError } = await supabase
-            .from('app_categories')
-            .select('id')
-            .eq('app_store_category', appStoreDetails.category)
-            .maybeSingle();
-            
-          if (categoryError) {
-            console.log('Error fetching category:', categoryError);
-            // Continue without a category - non-critical error
-          } else if (categoryData) {
-            categoryId = categoryData.id;
-            console.log('Found matching category ID:', categoryId);
-          } else {
-            console.log('No matching category found for:', appStoreDetails.category);
-            // If needed, we could insert a new category here
-          }
-        }
-        
-        // Prepare data for insertion
-        const appInsertData = {
-          name: appData.name || 'Unknown App',
-          icon_url: appData.icon_url || null,
-          bundle_id: appData.bundle_id || 
-                    appData.name?.toLowerCase().replace(/\s+/g, '') || 
-                    'unknown',
-          description: appStoreDetails?.description || '',
-          app_store_url: appStoreLink.includes('apple') ? appStoreLink : null,
-          play_store_url: appStoreLink.includes('play.google.com') ? appStoreLink : null,
-          category_id: categoryId, // Link to the category table
-          updated_at: new Date().toISOString()
-        };
-        
-        console.log('Inserting new app data:', appInsertData);
-        
-        // Insert the app data
-        const { data, error } = await supabase
-          .from('apps')
-          .insert([appInsertData])
-          .select();
-          
-        if (error) {
-          console.error('Database insert error:', error);
-          throw new Error(`Failed to save app data: ${error.message}`);
-        }
-        
-        if (!data || data.length === 0) {
-          throw new Error('No data returned after insert');
-        }
-        
-        console.log('App successfully inserted:', data[0]);
-        const updatedApp = {
-          ...appData,
-          id: data[0].id
-        };
-        setAppData(updatedApp);
-        toast.success('App data saved successfully');
-        return updatedApp;
-      } else {
-        // If app already exists in the database, just use it
-        console.log('Using existing app:', appData);
-        toast.success('Using existing app data');
-        return appData;
-      }
+      const updatedApp = await saveApp(appData, appStoreLink, appStoreDetails);
+      setAppData(updatedApp);
+      toast.success('App data saved successfully');
+      return updatedApp;
     } catch (err) {
       console.error('Error saving app:', err);
       const errorMessage = err instanceof Error ? 

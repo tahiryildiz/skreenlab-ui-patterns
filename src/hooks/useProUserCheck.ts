@@ -13,6 +13,36 @@ export function useProUserCheck() {
   const authCheckPerformedRef = useRef(false);
   const initialPathSaved = useRef(false);
   const isRestoringSession = useRef(false);
+  const tabSwitchInProgressRef = useRef(false);
+  
+  // Handle visibility change (tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab visibility changed to visible');
+        tabSwitchInProgressRef.current = true;
+        
+        // Critical: Check if upload was in progress before tab switch
+        const uploadInProgress = sessionStorage.getItem('uploadInProgress') === 'true';
+        if (uploadInProgress) {
+          console.log('Upload in progress detected after tab switch, preventing redirects');
+          // Mark auth as already checked to prevent unwanted redirect
+          authCheckPerformedRef.current = true;
+          setHasAuthChecked(true);
+          
+          // Set timeout to reset the tab switch flag after the current execution cycle
+          setTimeout(() => {
+            tabSwitchInProgressRef.current = false;
+          }, 100);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
   
   // Store the initial URL in sessionStorage
   useEffect(() => {
@@ -26,16 +56,21 @@ export function useProUserCheck() {
   // Check if the user is a Pro user
   useEffect(() => {
     const checkProStatus = async () => {
-      // IMPORTANT NEW CODE: Check if upload is in progress to prevent unwanted redirects
+      // IMPORTANT: If we detected a tab switch with upload in progress, skip all redirects
+      if (tabSwitchInProgressRef.current) {
+        console.log('Tab switch detected, skipping auth checks');
+        return;
+      }
+      
+      // Check if upload is in progress to prevent unwanted redirects
       const uploadInProgress = sessionStorage.getItem('uploadInProgress') === 'true';
       
       // Check if we're restoring from a tab switch
       const storedState = sessionStorage.getItem('uploadState');
       isRestoringSession.current = !!storedState;
       
-      // If upload is in progress and we're returning from a tab switch, 
-      // skip authentication checks entirely
-      if (uploadInProgress && isRestoringSession.current) {
+      // If upload is in progress, skip authentication checks entirely
+      if (uploadInProgress) {
         console.log('Upload in progress detected, skipping auth redirect checks');
         setHasAuthChecked(true); // Mark auth as checked to prevent further checks
         return;
@@ -66,7 +101,8 @@ export function useProUserCheck() {
           // 1. User is not Pro
           // 2. We're not restoring a session
           // 3. There's no upload in progress
-          if (!isPro && !isRestoringSession.current && !uploadInProgress) {
+          // 4. We're not in a tab switch
+          if (!isPro && !isRestoringSession.current && !uploadInProgress && !tabSwitchInProgressRef.current) {
             toast.error('Only Pro users can upload screenshots');
             navigate('/pricing');
           }
@@ -83,7 +119,8 @@ export function useProUserCheck() {
         // 2. There's no user
         // 3. We haven't checked auth yet
         // 4. There's no upload in progress
-        if (!uploadInProgress) {
+        // 5. We're not in a tab switch
+        if (!uploadInProgress && !tabSwitchInProgressRef.current) {
           authCheckPerformedRef.current = true;
           navigate('/signin');
         } else {
@@ -96,7 +133,10 @@ export function useProUserCheck() {
     };
 
     // Only check pro status if we haven't already checked auth
-    if (!hasAuthChecked || (user && !authCheckPerformedRef.current) || (!isLoading && !user && !authCheckPerformedRef.current)) {
+    if (!tabSwitchInProgressRef.current && 
+        (!hasAuthChecked || 
+         (user && !authCheckPerformedRef.current) || 
+         (!isLoading && !user && !authCheckPerformedRef.current))) {
       checkProStatus();
     }
   }, [user, isLoading, navigate, hasAuthChecked]);

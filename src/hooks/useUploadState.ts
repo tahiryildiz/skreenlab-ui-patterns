@@ -18,16 +18,36 @@ export function useUploadState() {
   const mountedRef = useRef(true);
   const hasInitializedRef = useRef(false);
   const isRestoringRef = useRef(false);
+  const visibilityChangeHandledRef = useRef(false);
+  
+  // Critical: Initialize with saved state immediately if available
+  useEffect(() => {
+    if (!hasInitializedRef.current && location.pathname === '/upload') {
+      hasInitializedRef.current = true;
+      
+      const storedState = sessionStorage.getItem('uploadState');
+      if (storedState && !hasRestoredStateRef.current) {
+        console.log('Found saved upload state on initial mount, restoring immediately');
+        restoreStateFromStorage();
+        
+        // Mark that we have an in-progress upload
+        sessionStorage.setItem('uploadInProgress', 'true');
+      } else {
+        console.log('No saved upload state found, starting fresh');
+        sessionStorage.removeItem('uploadInProgress');
+      }
+    }
+  }, []);
   
   // Track component mount status
   useEffect(() => {
     mountedRef.current = true;
     console.log('Upload state component mounted');
     
-    // Mark upload as in progress when component mounts
+    // Mark upload as in progress when component mounts if past step 1
     if (location.pathname === '/upload' && step > 1) {
       sessionStorage.setItem('uploadInProgress', 'true');
-      console.log('Setting uploadInProgress flag to true');
+      console.log('Setting uploadInProgress flag to true on component mount');
     }
     
     return () => {
@@ -36,7 +56,7 @@ export function useUploadState() {
     };
   }, []);
 
-  // Handle visibility change manually for more reliable state restoration
+  // Handle visibility change for more reliable state restoration
   useEffect(() => {
     const handleVisibilityChange = () => {
       // When page becomes visible again after being hidden
@@ -44,13 +64,29 @@ export function useUploadState() {
         console.log('Page visible again, checking for saved state');
         
         // Set flag to prevent recursive state restoration
-        if (!isRestoringRef.current && location.pathname === '/upload') {
+        if (!isRestoringRef.current && location.pathname === '/upload' && !visibilityChangeHandledRef.current) {
+          visibilityChangeHandledRef.current = true;
           isRestoringRef.current = true;
           
           // Use setTimeout to ensure this runs after any auth checks
           setTimeout(() => {
-            restoreStateFromStorage();
-            isRestoringRef.current = false;
+            if (mountedRef.current) {
+              // Check if we actually have state to restore
+              const storedState = sessionStorage.getItem('uploadState');
+              if (storedState && !hasRestoredStateRef.current) {
+                restoreStateFromStorage();
+                
+                // Mark that we have an in-progress upload
+                sessionStorage.setItem('uploadInProgress', 'true');
+              }
+              
+              isRestoringRef.current = false;
+              
+              // Reset the visibility change handled flag after a delay
+              setTimeout(() => {
+                visibilityChangeHandledRef.current = false;
+              }, 300);
+            }
           }, 100);
         }
       } else if (document.visibilityState === 'hidden') {
@@ -68,31 +104,6 @@ export function useUploadState() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [location.pathname, step]);
-  
-  // Initial state setup when component mounts
-  useEffect(() => {
-    if (!hasInitializedRef.current && location.pathname === '/upload') {
-      hasInitializedRef.current = true;
-      
-      const storedState = sessionStorage.getItem('uploadState');
-      if (storedState) {
-        console.log('Found saved upload state, will restore');
-        
-        // Mark that we have an in-progress upload
-        sessionStorage.setItem('uploadInProgress', 'true');
-        
-        // Restore on first mount, using setTimeout to ensure we're after auth checks
-        setTimeout(() => {
-          if (mountedRef.current) {
-            restoreStateFromStorage();
-          }
-        }, 100);
-      } else {
-        console.log('No saved upload state found, starting fresh');
-        sessionStorage.removeItem('uploadInProgress');
-      }
-    }
-  }, [location.pathname]);
   
   // Function to save state to sessionStorage
   const saveUploadState = () => {
@@ -132,7 +143,7 @@ export function useUploadState() {
     try {
       const storedState = sessionStorage.getItem('uploadState');
       
-      if (storedState && mountedRef.current && !hasRestoredStateRef.current) {
+      if (storedState && mountedRef.current) {
         const parsedState = JSON.parse(storedState);
         console.log('Restoring upload state from storage', { 
           step: parsedState.step,

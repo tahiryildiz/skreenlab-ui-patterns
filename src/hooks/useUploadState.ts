@@ -14,17 +14,25 @@ export function useUploadState() {
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagStep, setTagStep] = useState<'category' | 'elements'>('category');
+  
+  // Refs for state management
   const hasRestoredStateRef = useRef(false);
   const mountedRef = useRef(true);
   const hasInitializedRef = useRef(false);
   const isRestoringRef = useRef(false);
   const visibilityChangeHandledRef = useRef(false);
+  const stateLastSavedRef = useRef(0);
+  
+  // Additional defensive refs to prevent race conditions
+  const isVisibilityChangeInProgressRef = useRef(false);
+  const preventStateOverwriteRef = useRef(false);
   
   // Critical: Initialize with saved state immediately if available
   useEffect(() => {
     if (!hasInitializedRef.current && location.pathname === '/upload') {
       hasInitializedRef.current = true;
       
+      // On initial mount, immediately try to restore state and set upload in progress
       const storedState = sessionStorage.getItem('uploadState');
       if (storedState && !hasRestoredStateRef.current) {
         console.log('Found saved upload state on initial mount, restoring immediately');
@@ -53,15 +61,28 @@ export function useUploadState() {
     return () => {
       mountedRef.current = false;
       console.log('Upload state component unmounted');
+      
+      // Critical: Don't clear upload in progress on unmount
+      // This allows the flag to persist through remounts during tab switching
     };
   }, []);
 
-  // Handle visibility change for more reliable state restoration
+  // Enhanced visibility change handler for more reliable state restoration
   useEffect(() => {
     const handleVisibilityChange = () => {
+      // Guard against multiple visibility change events firing too quickly
+      if (isVisibilityChangeInProgressRef.current) {
+        console.log('Visibility change already in progress, skipping duplicate event');
+        return;
+      }
+      
       // When page becomes visible again after being hidden
       if (document.visibilityState === 'visible' && mountedRef.current) {
         console.log('Page visible again, checking for saved state');
+        isVisibilityChangeInProgressRef.current = true;
+        
+        // Prevent state overwrite during visibility change restoration
+        preventStateOverwriteRef.current = true;
         
         // Set flag to prevent recursive state restoration
         if (!isRestoringRef.current && location.pathname === '/upload' && !visibilityChangeHandledRef.current) {
@@ -78,13 +99,16 @@ export function useUploadState() {
                 
                 // Mark that we have an in-progress upload
                 sessionStorage.setItem('uploadInProgress', 'true');
+                sessionStorage.setItem('preventAuthRedirects', 'true');
               }
               
               isRestoringRef.current = false;
               
-              // Reset the visibility change handled flag after a delay
+              // Reset the visibility change flags after a delay
               setTimeout(() => {
                 visibilityChangeHandledRef.current = false;
+                isVisibilityChangeInProgressRef.current = false;
+                preventStateOverwriteRef.current = false;
               }, 300);
             }
           }, 100);
@@ -109,6 +133,21 @@ export function useUploadState() {
   const saveUploadState = () => {
     if (step > 1 && mountedRef.current) {
       try {
+        // Skip save if a restoration is in progress or we're preventing overwrite
+        if (isRestoringRef.current || preventStateOverwriteRef.current) {
+          console.log('Skipping state save due to active restoration or overwrite prevention');
+          return;
+        }
+        
+        const currentTime = new Date().getTime();
+        
+        // Don't save state too frequently to prevent excessive writes
+        if (currentTime - stateLastSavedRef.current < 100) {
+          return;
+        }
+        
+        stateLastSavedRef.current = currentTime;
+        
         const stateToStore = {
           step,
           appStoreLink,
@@ -126,7 +165,7 @@ export function useUploadState() {
           })),
           currentScreenshotIndex,
           tagStep,
-          timestamp: new Date().getTime()
+          timestamp: currentTime
         };
         
         sessionStorage.setItem('uploadState', JSON.stringify(stateToStore));
@@ -207,6 +246,7 @@ export function useUploadState() {
           
           // Re-mark that we have an upload in progress
           sessionStorage.setItem('uploadInProgress', 'true');
+          sessionStorage.setItem('preventAuthRedirects', 'true');
         }
       }
     } catch (error) {
@@ -216,8 +256,8 @@ export function useUploadState() {
   
   // Store the user's upload state in sessionStorage for persistence
   useEffect(() => {
-    // Avoid saving during restoration
-    if (isRestoringRef.current) return;
+    // Avoid saving during restoration or if we're preventing state overwrite
+    if (isRestoringRef.current || preventStateOverwriteRef.current) return;
     
     // Only save state if we're mounted and past step 1
     if (mountedRef.current && step > 1 && hasInitializedRef.current) {
@@ -249,6 +289,7 @@ export function useUploadState() {
     setStep(2);
     // Explicitly mark upload as in progress
     sessionStorage.setItem('uploadInProgress', 'true');
+    sessionStorage.setItem('preventAuthRedirects', 'true');
   };
 
   // Handler for step 2: App metadata confirmation
@@ -257,6 +298,8 @@ export function useUploadState() {
     setHeroImages(selectedHeroImages);
     setHeroVideos(selectedHeroVideos);
     setStep(3);
+    sessionStorage.setItem('uploadInProgress', 'true');
+    sessionStorage.setItem('preventAuthRedirects', 'true');
   };
 
   const handleScreenshotsUpload = (newScreenshots: UploadScreenshot[]) => {
@@ -264,8 +307,11 @@ export function useUploadState() {
     setCurrentScreenshotIndex(0);
     setTagStep('category');
     setStep(4);
+    sessionStorage.setItem('uploadInProgress', 'true');
+    sessionStorage.setItem('preventAuthRedirects', 'true');
   };
 
+  // Screenshot handling
   const handleScreenshotCategorySelect = (
     index: number, 
     screenCategoryId: string
@@ -280,6 +326,8 @@ export function useUploadState() {
     });
     
     setTagStep('elements');
+    sessionStorage.setItem('uploadInProgress', 'true');
+    sessionStorage.setItem('preventAuthRedirects', 'true');
   };
 
   const handleScreenshotElementsSelect = (
@@ -301,6 +349,9 @@ export function useUploadState() {
       setCurrentScreenshotIndex(prev => prev + 1);
       setTagStep('category');
     }
+    
+    sessionStorage.setItem('uploadInProgress', 'true');
+    sessionStorage.setItem('preventAuthRedirects', 'true');
   };
 
   // Clear all upload state
@@ -315,6 +366,7 @@ export function useUploadState() {
     setTagStep('category');
     sessionStorage.removeItem('uploadState');
     sessionStorage.removeItem('uploadInProgress');
+    sessionStorage.removeItem('preventAuthRedirects');
     hasRestoredStateRef.current = false;
     hasInitializedRef.current = false;
     console.log('Upload state cleared from sessionStorage');

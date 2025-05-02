@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -9,7 +8,7 @@ import { useUploadState } from '@/hooks/useUploadState';
 import { useScreenshotUpload } from '@/hooks/useScreenshotUpload';
 
 const Upload = () => {
-  // Component mounted status tracking
+  // Component mounted status tracking with aggressive redirect prevention
   const isMounted = useRef(true);
   const hasInitializedRef = useRef(false);
   const preventRedirectRef = useRef(false);
@@ -46,37 +45,35 @@ const Upload = () => {
   // Screenshot upload handling
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
 
-  // Critical: Set flag immediately on component mount to prevent redirects
+  // CRITICAL: Set flags immediately on component mount to prevent redirects
+  // This runs before any other effects
   useEffect(() => {
-    // Set this in a timeout to ensure it runs after any auth checks
-    setTimeout(() => {
-      if (isMounted.current) {
-        preventRedirectRef.current = true;
-        
-        if (step > 1) {
-          console.log('Setting upload in progress flag from Upload component mount');
-          sessionStorage.setItem('uploadInProgress', 'true');
-        }
-      }
-    }, 0);
-  }, []);
-
-  // Track component mount status
-  useEffect(() => {
-    isMounted.current = true;
-    console.log('Upload page mounted');
+    // Set this synchronously before any async operations
+    preventRedirectRef.current = true;
     
-    // Handle visibility change for this specific component
+    // Immediate setup to prevent redirect race conditions
+    sessionStorage.setItem('currentUploadPath', '/upload');
+    
+    // If we're past step 1, mark upload as in-progress
+    if (step > 1) {
+      console.log('Setting upload in progress flag from Upload component mount');
+      sessionStorage.setItem('uploadInProgress', 'true');
+      sessionStorage.setItem('preventAuthRedirects', 'true');
+    }
+    
+    // Setup of aggressive visibility change handling
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isMounted.current) {
         console.log('Upload page: Tab became visible');
         
-        // Double-check that we have the upload in progress flag set
-        // if we're past step 1
-        if (step > 1) {
+        // Forces flags set on ANY tab visibility change
+        preventRedirectRef.current = true;
+        sessionStorage.setItem('preventAuthRedirects', 'true');
+        
+        // If we're past step 1 or have any screenshots, mark upload as in-progress
+        if (step > 1 || screenshots.length > 0) {
           console.log('Upload in progress, setting flag to prevent redirects');
           sessionStorage.setItem('uploadInProgress', 'true');
-          preventRedirectRef.current = true;
         }
       }
     };
@@ -91,21 +88,26 @@ const Upload = () => {
       // Don't reset the uploadInProgress flag when unmounting
       // This prevents issues when the component is remounted during tab switching
     };
-  }, [step]);
+  }, [step, screenshots.length]);
   
-  // Check for upload in progress on initial render and set flag
+  // Additional effect to ensure we have the upload in progress flag set
   useEffect(() => {
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
       
-      // Initialize storedState variable to avoid repeated lookups
-      const storedState = sessionStorage.getItem('uploadState');
-      
-      if (step > 1 || (storedState && JSON.parse(storedState).step > 1)) {
+      if (step > 1) {
         console.log('Setting upload in progress flag on component initialize');
         sessionStorage.setItem('uploadInProgress', 'true');
+        sessionStorage.setItem('preventAuthRedirects', 'true');
         preventRedirectRef.current = true;
       }
+    }
+    
+    // Aggressively set flag whenever step changes to anything past 1
+    if (step > 1) {
+      sessionStorage.setItem('uploadInProgress', 'true');
+      sessionStorage.setItem('preventAuthRedirects', 'true');
+      preventRedirectRef.current = true;
     }
   }, [step]);
   
@@ -118,18 +120,17 @@ const Upload = () => {
     return <div className="min-h-screen flex items-center justify-center bg-white">Loading...</div>;
   }
 
-  // Only redirect if:
-  // 1. Not pro user
-  // 2. Not loading
-  // 3. Auth has been checked
-  // 4. Auth check has been performed
-  // 5. User exists
-  // 6. No upload in progress
-  // 7. Not preventing redirect
-  const shouldRedirect = !isProUser && !isLoading && hasAuthChecked && 
-                         authCheckPerformedRef.current && user && 
-                         sessionStorage.getItem('uploadInProgress') !== 'true' &&
-                         !preventRedirectRef.current;
+  // CRITICAL: More restrictive redirect condition
+  // Only redirect if ALL these conditions are met
+  const shouldRedirect = 
+    !isProUser && 
+    !isLoading && 
+    hasAuthChecked && 
+    authCheckPerformedRef.current && 
+    user && 
+    sessionStorage.getItem('uploadInProgress') !== 'true' &&
+    sessionStorage.getItem('preventAuthRedirects') !== 'true' &&
+    !preventRedirectRef.current;
   
   if (shouldRedirect) {
     console.log('Redirect condition met, redirecting to pricing...');

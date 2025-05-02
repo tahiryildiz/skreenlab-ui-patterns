@@ -11,29 +11,48 @@ export function useProUserCheck() {
   const [isProUser, setIsProUser] = useState(false);
   const [hasAuthChecked, setHasAuthChecked] = useState(false);
   const authCheckPerformedRef = useRef(false);
-  const initialPathSaved = useRef(false);
-  const isRestoringSession = useRef(false);
-  const tabSwitchInProgressRef = useRef(false);
+  const tabSwitchDetectedRef = useRef(false);
+  const preventRedirectRef = useRef(false);
+  
+  // Initialize flags on mount
+  useEffect(() => {
+    // Set flag immediately to prevent redirect races at mount time
+    const uploadInProgress = sessionStorage.getItem('uploadInProgress') === 'true';
+    if (uploadInProgress) {
+      console.log('Upload in progress detected on component mount, preventing redirects');
+      preventRedirectRef.current = true;
+      sessionStorage.setItem('preventAuthRedirects', 'true');
+    }
+    
+    return () => {
+      // Don't clear flags on unmount to ensure they persist through tab switches
+    };
+  }, []);
   
   // Handle visibility change (tab switching)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('Tab visibility changed to visible');
-        tabSwitchInProgressRef.current = true;
+        tabSwitchDetectedRef.current = true;
         
-        // Critical: Check if upload was in progress before tab switch
+        // Critical: Set preventRedirect flag on ANY tab visibility change
         const uploadInProgress = sessionStorage.getItem('uploadInProgress') === 'true';
-        if (uploadInProgress) {
-          console.log('Upload in progress detected after tab switch, preventing redirects');
-          // Mark auth as already checked to prevent unwanted redirect
+        const currentPath = window.location.pathname;
+        
+        if (uploadInProgress || currentPath === '/upload') {
+          console.log('Upload in progress or on upload page, preventing redirects after tab switch');
+          preventRedirectRef.current = true;
+          sessionStorage.setItem('preventAuthRedirects', 'true');
+          
+          // Mark auth as checked to prevent unwanted redirect
           authCheckPerformedRef.current = true;
           setHasAuthChecked(true);
           
-          // Set timeout to reset the tab switch flag after the current execution cycle
-          setTimeout(() => {
-            tabSwitchInProgressRef.current = false;
-          }, 100);
+          // Double check - restore upload state flag if we're on upload path
+          if (currentPath === '/upload') {
+            sessionStorage.setItem('uploadInProgress', 'true');
+          }
         }
       }
     };
@@ -43,39 +62,23 @@ export function useProUserCheck() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
-  
-  // Store the initial URL in sessionStorage
-  useEffect(() => {
-    if (!initialPathSaved.current) {
-      sessionStorage.setItem('currentUploadPath', '/upload');
-      initialPathSaved.current = true;
-      console.log('Initial path saved to sessionStorage');
-    }
-  }, []);
 
   // Check if the user is a Pro user
   useEffect(() => {
     const checkProStatus = async () => {
-      // IMPORTANT: If we detected a tab switch with upload in progress, skip all redirects
-      if (tabSwitchInProgressRef.current) {
-        console.log('Tab switch detected, skipping auth checks');
-        return;
-      }
-      
-      // Check if upload is in progress to prevent unwanted redirects
+      // CRITICAL: Check multiple conditions that would prevent redirects
       const uploadInProgress = sessionStorage.getItem('uploadInProgress') === 'true';
+      const preventRedirects = sessionStorage.getItem('preventAuthRedirects') === 'true';
+      const currentPath = window.location.pathname;
       
-      // Check if we're restoring from a tab switch
-      const storedState = sessionStorage.getItem('uploadState');
-      isRestoringSession.current = !!storedState;
-      
-      // If upload is in progress, skip authentication checks entirely
-      if (uploadInProgress) {
-        console.log('Upload in progress detected, skipping auth redirect checks');
-        setHasAuthChecked(true); // Mark auth as checked to prevent further checks
+      // Skip ALL auth checks if ANY prevention flag is true
+      if (uploadInProgress || preventRedirectRef.current || preventRedirects || tabSwitchDetectedRef.current) {
+        console.log('Skipping auth redirect checks due to prevention flags');
+        setHasAuthChecked(true);
         return;
       }
       
+      // Only proceed with checks if we're not in a tab switch AND no prevention flags
       if (user && !authCheckPerformedRef.current) {
         authCheckPerformedRef.current = true;
         console.log('Checking pro status for user:', user.id);
@@ -93,21 +96,19 @@ export function useProUserCheck() {
             return;
           }
           
-          // Safely access is_pro with correct typing
           const isPro = !!data?.is_pro;
           setIsProUser(isPro);
           
-          // Only redirect if:
-          // 1. User is not Pro
-          // 2. We're not restoring a session
-          // 3. There's no upload in progress
-          // 4. We're not in a tab switch
-          if (!isPro && !isRestoringSession.current && !uploadInProgress && !tabSwitchInProgressRef.current) {
+          // Only redirect if we're on the upload page AND user is not pro AND all other conditions are false
+          if (!isPro && currentPath === '/upload' && 
+              !uploadInProgress && 
+              !preventRedirectRef.current && 
+              !preventRedirects &&
+              !tabSwitchDetectedRef.current) {
             toast.error('Only Pro users can upload screenshots');
             navigate('/pricing');
           }
           
-          // Mark that we've checked auth
           setHasAuthChecked(true);
         } catch (error) {
           console.error('Error checking Pro status:', error);
@@ -115,31 +116,24 @@ export function useProUserCheck() {
         }
       } else if (!isLoading && !user && !authCheckPerformedRef.current) {
         // Only redirect if:
-        // 1. We're done loading
-        // 2. There's no user
-        // 3. We haven't checked auth yet
-        // 4. There's no upload in progress
-        // 5. We're not in a tab switch
-        if (!uploadInProgress && !tabSwitchInProgressRef.current) {
+        // 1. Not in upload path OR
+        // 2. No prevention flags set
+        if (currentPath !== '/upload' && 
+            !uploadInProgress && 
+            !preventRedirectRef.current && 
+            !preventRedirects && 
+            !tabSwitchDetectedRef.current) {
           authCheckPerformedRef.current = true;
           navigate('/signin');
         } else {
-          // Special case: If upload is in progress but no user,
-          // we'll let the component handle this situation rather than redirecting
-          console.log('Upload in progress but no user, skipping redirect');
+          console.log('Skipping redirect - possible upload in progress');
           setHasAuthChecked(true);
         }
       }
     };
 
-    // Only check pro status if we haven't already checked auth
-    if (!tabSwitchInProgressRef.current && 
-        (!hasAuthChecked || 
-         (user && !authCheckPerformedRef.current) || 
-         (!isLoading && !user && !authCheckPerformedRef.current))) {
-      checkProStatus();
-    }
-  }, [user, isLoading, navigate, hasAuthChecked]);
+    checkProStatus();
+  }, [user, isLoading, navigate]);
 
   return {
     user,

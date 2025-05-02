@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -12,6 +13,7 @@ const Upload = () => {
   const isMounted = useRef(true);
   const hasInitializedRef = useRef(false);
   const preventRedirectRef = useRef(false);
+  const freshLoadRef = useRef(true); // Track if this is a fresh page load
   
   // User authentication and pro status check
   const { 
@@ -44,6 +46,27 @@ const Upload = () => {
   
   // Screenshot upload handling
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
+
+  // Clear session storage when component mounts from a fresh page load
+  // This helps prevent previous uploads from being remembered
+  useEffect(() => {
+    // Check if this is a fresh navigation from another page (not tab switching)
+    if (freshLoadRef.current) {
+      // Use small delay to ensure this happens after any state restoration attempts
+      const timer = setTimeout(() => {
+        console.log('Fresh load of Upload page - clearing upload state');
+        clearUploadState();
+        sessionStorage.removeItem('uploadState');
+        sessionStorage.removeItem('uploadInProgress');
+        sessionStorage.removeItem('preventAuthRedirects');
+        sessionStorage.removeItem('tempScreenshots');
+        sessionStorage.removeItem('currentUploadPath');
+      }, 50);
+      
+      freshLoadRef.current = false;
+      return () => clearTimeout(timer);
+    }
+  }, [clearUploadState]);
 
   // CRITICAL: Set flags immediately on component mount to prevent redirects
   // This runs before any other effects

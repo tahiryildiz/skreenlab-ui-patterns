@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +12,13 @@ interface StepLinkInputProps {
 const StepLinkInput: React.FC<StepLinkInputProps> = ({ onSubmit }) => {
   const [link, setLink] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Clear any stored app link when this component mounts
+  useEffect(() => {
+    // Make sure we start fresh
+    setLink('');
+    setError(null);
+  }, []);
   
   const validateUrl = (url: string) => {
     // Simple validation for App Store or Play Store URLs

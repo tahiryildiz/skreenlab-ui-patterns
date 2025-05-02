@@ -6,10 +6,11 @@ import { UploadScreenshot } from '@/types/upload';
 import { clearUploadStateFromStorage, restoreStateFromStorage, saveUploadState, setUploadInProgress } from './upload/uploadStorageUtils';
 import { createUploadStateHandlers } from './upload/uploadStateHandlers';
 import { useVisibilityChangeHandler } from './upload/useVisibilityChangeHandler';
+import { UploadStep, TagStep } from './upload/uploadStateTypes';
 
 export function useUploadState() {
   const location = useLocation();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<UploadStep>(1);
   const [appStoreLink, setAppStoreLink] = useState<string>('');
   const [appMetadata, setAppMetadata] = useState<App | null>(null);
   const [heroImages, setHeroImages] = useState<string[] | undefined>(undefined);
@@ -17,7 +18,7 @@ export function useUploadState() {
   const [screenshots, setScreenshots] = useState<UploadScreenshot[]>([]);
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tagStep, setTagStep] = useState<'category' | 'elements'>('category');
+  const [tagStep, setTagStep] = useState<TagStep>('category');
   
   // Refs for state management
   const hasRestoredStateRef = useRef(false);

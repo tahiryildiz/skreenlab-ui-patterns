@@ -1,6 +1,7 @@
 
 import { useEffect } from "react";
 import { restoreStateFromStorage } from "./uploadStorageUtils";
+import { UploadStep, TagStep } from "./uploadStateTypes";
 
 export function useVisibilityChangeHandler(
   location: { pathname: string },
@@ -12,14 +13,14 @@ export function useVisibilityChangeHandler(
   isVisibilityChangeInProgressRef: React.MutableRefObject<boolean>,
   preventStateOverwriteRef: React.MutableRefObject<boolean>,
   saveUploadState: () => void,
-  setStep: (step: number) => void,
+  setStep: (step: UploadStep) => void,
   setAppStoreLink: (link: string) => void,
   setAppMetadata: (metadata: any) => void,
   setHeroImages: (images: string[] | undefined) => void,
   setHeroVideos: (videos: string[] | undefined) => void,
   setScreenshots: (screenshots: any[]) => void,
   setCurrentScreenshotIndex: (index: number) => void,
-  setTagStep: (step: 'category' | 'elements') => void
+  setTagStep: (step: TagStep) => void
 ) {
   // Enhanced visibility change handler for more reliable state restoration
   useEffect(() => {

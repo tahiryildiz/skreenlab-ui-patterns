@@ -1,6 +1,6 @@
 
 import { UploadScreenshot } from '@/types/upload';
-import { SerializedScreenshot, SerializedUploadState, UploadState } from './uploadStateTypes';
+import { SerializedScreenshot, SerializedUploadState, UploadState, UploadStep, TagStep } from './uploadStateTypes';
 
 // Save upload state to session storage
 export const saveUploadState = (
@@ -53,14 +53,14 @@ export const saveUploadState = (
 // Restore state from session storage
 export const restoreStateFromStorage = (
   location: { pathname: string },
-  setStep: (step: number) => void,
+  setStep: (step: UploadStep) => void,
   setAppStoreLink: (link: string) => void,
   setAppMetadata: (metadata: any) => void,
   setHeroImages: (images: string[] | undefined) => void,
   setHeroVideos: (videos: string[] | undefined) => void,
   setScreenshots: (screenshots: UploadScreenshot[]) => void,
   setCurrentScreenshotIndex: (index: number) => void,
-  setTagStep: (step: 'category' | 'elements') => void,
+  setTagStep: (step: TagStep) => void,
   mountedRef: React.MutableRefObject<boolean>,
   hasRestoredStateRef: React.MutableRefObject<boolean>
 ): boolean => {
@@ -77,7 +77,7 @@ export const restoreStateFromStorage = (
       
       // Only restore state if we're on the upload page
       if (location.pathname === '/upload') {
-        setStep(parsedState.step || 1);
+        setStep(parsedState.step as UploadStep || 1);
         setAppStoreLink(parsedState.appStoreLink || '');
         setAppMetadata(parsedState.appMetadata || null);
         setHeroImages(parsedState.heroImages || undefined);
@@ -124,7 +124,7 @@ export const restoreStateFromStorage = (
         }
         
         setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
-        setTagStep(parsedState.tagStep || 'category');
+        setTagStep(parsedState.tagStep as TagStep || 'category');
         
         console.log('Successfully restored upload state from sessionStorage');
         

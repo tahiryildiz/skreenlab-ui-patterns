@@ -2,16 +2,17 @@
 import { App } from "@/types";
 import { UploadScreenshot } from "@/types/upload";
 import { setUploadInProgress } from "./uploadStorageUtils";
+import { UploadStep, TagStep } from "./uploadStateTypes";
 
 export const createUploadStateHandlers = (
-  setStep: (value: React.SetStateAction<number>) => void,
+  setStep: (value: React.SetStateAction<UploadStep>) => void,
   setAppStoreLink: (value: string) => void,
   setAppMetadata: (value: App | null) => void,
   setHeroImages: (value: string[] | undefined) => void,
   setHeroVideos: (value: string[] | undefined) => void,
   setScreenshots: (value: React.SetStateAction<UploadScreenshot[]>) => void,
   setCurrentScreenshotIndex: (value: React.SetStateAction<number>) => void,
-  setTagStep: (value: React.SetStateAction<'category' | 'elements'>) => void,
+  setTagStep: (value: React.SetStateAction<TagStep>) => void,
   clearUploadState: () => void
 ) => {
   // Calculate progress percentage based on current step
@@ -25,11 +26,19 @@ export const createUploadStateHandlers = (
   };
 
   const handleNextStep = () => {
-    setStep(prev => prev + 1);
+    setStep(prev => {
+      // Ensure we cast the result to UploadStep
+      const nextStep = (prev + 1) as UploadStep;
+      return nextStep <= 5 ? nextStep : prev;
+    });
   };
 
   const handlePrevStep = () => {
-    setStep(prev => Math.max(prev - 1, 1));
+    setStep(prev => {
+      // Ensure we cast the result to UploadStep
+      const prevStep = (prev - 1) as UploadStep;
+      return prevStep >= 1 ? prevStep : prev;
+    });
   };
 
   // Handler for step 1: App Store or Play Store link submission

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { App } from '@/types';
@@ -18,7 +17,7 @@ export function useUploadState() {
   
   // Store the user's upload state in sessionStorage for persistence
   useEffect(() => {
-    // Save current upload state to sessionStorage
+    // Save current upload state to sessionStorage whenever it changes
     const saveUploadState = () => {
       if (step > 1) {
         try {
@@ -41,6 +40,7 @@ export function useUploadState() {
             tagStep
           };
           sessionStorage.setItem('uploadState', JSON.stringify(stateToStore));
+          console.log('Upload state saved to sessionStorage');
         } catch (error) {
           console.error('Error storing upload state:', error);
         }
@@ -53,67 +53,66 @@ export function useUploadState() {
   
   // Restore upload state from sessionStorage when returning to the page
   useEffect(() => {
-    if (location.pathname === '/upload') {
-      try {
-        const storedState = sessionStorage.getItem('uploadState');
-        if (storedState) {
-          const parsedState = JSON.parse(storedState);
-          setStep(parsedState.step || 1);
-          setAppStoreLink(parsedState.appStoreLink || '');
-          setAppMetadata(parsedState.appMetadata || null);
-          setHeroImages(parsedState.heroImages || undefined);
-          setHeroVideos(parsedState.heroVideos || undefined);
-          
-          // Restore screenshots with reconstructed File objects
-          if (parsedState.screenshots && Array.isArray(parsedState.screenshots)) {
-            const restoredScreenshots = parsedState.screenshots.map((s: any) => {
-              // Create a new object with the saved properties
-              let screenshot: UploadScreenshot = {
-                dataUrl: s.dataUrl,
-                screenCategoryId: s.screenCategoryId || null,
-                uiElementIds: s.uiElementIds || [],
-                file: null as any // We'll try to reconstruct this below
-              };
-              
-              // Try to reconstruct a File object from the dataUrl if possible
-              if (s.dataUrl && s.fileName) {
-                try {
-                  // Convert data URL to blob
-                  const arr = s.dataUrl.split(',');
-                  const mime = arr[0].match(/:(.*?);/)[1];
-                  const bstr = atob(arr[1]);
-                  let n = bstr.length;
-                  const u8arr = new Uint8Array(n);
-                  while (n--) {
-                    u8arr[n] = bstr.charCodeAt(n);
-                  }
-                  
-                  // Create File object from blob
-                  const blob = new Blob([u8arr], { type: mime });
-                  screenshot.file = new File([blob], s.fileName, { type: s.fileType || mime });
-                } catch (error) {
-                  console.error('Error reconstructing File from dataUrl:', error);
-                }
-              }
-              
-              return screenshot;
-            });
+    // This effect should run only once when the component mounts
+    try {
+      const storedState = sessionStorage.getItem('uploadState');
+      if (storedState) {
+        const parsedState = JSON.parse(storedState);
+        setStep(parsedState.step || 1);
+        setAppStoreLink(parsedState.appStoreLink || '');
+        setAppMetadata(parsedState.appMetadata || null);
+        setHeroImages(parsedState.heroImages || undefined);
+        setHeroVideos(parsedState.heroVideos || undefined);
+        
+        // Restore screenshots with reconstructed File objects
+        if (parsedState.screenshots && Array.isArray(parsedState.screenshots)) {
+          const restoredScreenshots = parsedState.screenshots.map((s: any) => {
+            // Create a new object with the saved properties
+            let screenshot: UploadScreenshot = {
+              dataUrl: s.dataUrl,
+              screenCategoryId: s.screenCategoryId || null,
+              uiElementIds: s.uiElementIds || [],
+              file: null as any // We'll try to reconstruct this below
+            };
             
-            setScreenshots(restoredScreenshots);
-          } else {
-            setScreenshots([]);
-          }
+            // Try to reconstruct a File object from the dataUrl if possible
+            if (s.dataUrl && s.fileName) {
+              try {
+                // Convert data URL to blob
+                const arr = s.dataUrl.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                  u8arr[n] = bstr.charCodeAt(n);
+                }
+                
+                // Create File object from blob
+                const blob = new Blob([u8arr], { type: mime });
+                screenshot.file = new File([blob], s.fileName, { type: s.fileType || mime });
+              } catch (error) {
+                console.error('Error reconstructing File from dataUrl:', error);
+              }
+            }
+            
+            return screenshot;
+          });
           
-          setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
-          setTagStep(parsedState.tagStep || 'category');
-          
-          console.log('Successfully restored upload state from sessionStorage');
+          setScreenshots(restoredScreenshots);
+        } else {
+          setScreenshots([]);
         }
-      } catch (error) {
-        console.error('Error retrieving upload state:', error);
+        
+        setCurrentScreenshotIndex(parsedState.currentScreenshotIndex || 0);
+        setTagStep(parsedState.tagStep || 'category');
+        
+        console.log('Successfully restored upload state from sessionStorage');
       }
+    } catch (error) {
+      console.error('Error retrieving upload state:', error);
     }
-  }, [location.pathname]);
+  }, []);
 
   // Calculate progress percentage based on current step
   const progressPercentage = () => {

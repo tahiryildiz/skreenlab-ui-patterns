@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import UploadProgress from '@/components/upload/UploadProgress';
@@ -41,8 +41,8 @@ const Upload = () => {
   // Screenshot upload handling
   const { isSubmitting, uploadScreenshots } = useScreenshotUpload();
   
-  // Removing the visibilitychange event listener entirely as it's not needed
-  // since we're now using sessionStorage for state persistence
+  // No visibilitychange event listeners are added here
+  // We're relying entirely on sessionStorage for state persistence
   
   const handleSubmit = () => {
     uploadScreenshots(screenshots, appMetadata, user, clearUploadState, heroImages, heroVideos);

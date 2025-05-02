@@ -13,25 +13,15 @@ export function useProUserCheck() {
   const authCheckPerformedRef = useRef(false);
   const initialPathSaved = useRef(false);
   
-  // Store the initial URL in sessionStorage and handle visibility changes
+  // Store the initial URL in sessionStorage
   useEffect(() => {
     if (!initialPathSaved.current) {
       sessionStorage.setItem('currentUploadPath', '/upload');
       initialPathSaved.current = true;
     }
-
-    // Handle tab visibility changes
-    const handleVisibilityChange = () => {
-      if (!document.hidden && window.location.pathname === '/upload') {
-        console.log('Upload tab is visible again');
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    // We're removing the visibilitychange event listener as it's causing navigation issues
+    // No need to add any event listeners here since we're using sessionStorage for persistence
   }, []);
 
   // Check if the user is a Pro user

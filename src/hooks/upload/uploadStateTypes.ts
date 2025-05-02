@@ -15,6 +15,7 @@ export interface UploadState {
   screenshots: UploadScreenshot[];
   currentScreenshotIndex: number;
   tagStep: TagStep;
+  selectedCategory?: string | null;
   timestamp?: number;
 }
 
@@ -31,4 +32,11 @@ export interface SerializedScreenshot {
 export interface SerializedUploadState extends Omit<UploadState, 'screenshots'> {
   screenshots: SerializedScreenshot[];
   timestamp: number;
+}
+
+export interface ScreenCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon?: React.ReactNode;
 }

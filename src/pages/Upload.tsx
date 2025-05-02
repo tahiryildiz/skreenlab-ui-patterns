@@ -34,13 +34,15 @@ const Upload = () => {
     screenshots,
     currentScreenshotIndex,
     tagStep,
+    selectedCategory,
     progressPercentage,
     handlePrevStep,
     handleAppLinkSubmit,
     handleAppMetadataConfirm,
+    handleCategorySelect,
     handleScreenshotsUpload,
-    handleScreenshotCategorySelect,
     handleScreenshotElementsSelect,
+    handleChangeCategory,
     clearUploadState
   } = useUploadState();
   
@@ -174,15 +176,17 @@ const Upload = () => {
           step={step}
           appStoreLink={appStoreLink}
           appMetadata={appMetadata}
+          selectedCategory={selectedCategory}
           screenshots={screenshots}
           currentScreenshotIndex={currentScreenshotIndex}
           tagStep={tagStep}
           isSubmitting={isSubmitting}
           onAppLinkSubmit={handleAppLinkSubmit}
           onAppMetadataConfirm={handleAppMetadataConfirm}
+          onCategorySelect={handleCategorySelect}
           onScreenshotsUpload={handleScreenshotsUpload}
-          onScreenshotCategorySelect={handleScreenshotCategorySelect}
           onScreenshotElementsSelect={handleScreenshotElementsSelect}
+          onChangeCategory={handleChangeCategory}
           onSubmit={handleSubmit}
           onPrev={handlePrevStep}
         />

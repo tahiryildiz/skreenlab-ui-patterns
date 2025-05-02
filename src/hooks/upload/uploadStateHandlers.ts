@@ -13,6 +13,7 @@ export const createUploadStateHandlers = (
   setScreenshots: (value: React.SetStateAction<UploadScreenshot[]>) => void,
   setCurrentScreenshotIndex: (value: React.SetStateAction<number>) => void,
   setTagStep: (value: React.SetStateAction<TagStep>) => void,
+  setSelectedCategory: (value: string | null) => void,
   clearUploadState: () => void
 ) => {
   // Calculate progress percentage based on current step
@@ -58,32 +59,27 @@ export const createUploadStateHandlers = (
     setUploadInProgress();
   };
 
-  const handleScreenshotsUpload = (newScreenshots: UploadScreenshot[]) => {
-    setScreenshots(newScreenshots);
-    setCurrentScreenshotIndex(0);
-    setTagStep('category');
+  // Handler for step 3: Category selection
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
     setStep(4);
     setUploadInProgress();
   };
 
-  // Screenshot handling
-  const handleScreenshotCategorySelect = (
-    index: number, 
-    screenCategoryId: string
-  ) => {
-    setScreenshots(prev => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        screenCategoryId
-      };
-      return updated;
-    });
+  const handleScreenshotsUpload = (newScreenshots: UploadScreenshot[], categoryId: string) => {
+    // Assign the selected category to all new screenshots
+    const screenshotsWithCategory = newScreenshots.map(screenshot => ({
+      ...screenshot,
+      screenCategoryId: categoryId
+    }));
     
+    setScreenshots(prevScreenshots => [...prevScreenshots, ...screenshotsWithCategory]);
+    setCurrentScreenshotIndex(prevScreenshots => prevScreenshots.length);
     setTagStep('elements');
     setUploadInProgress();
   };
 
+  // Screenshot handling
   const handleScreenshotElementsSelect = (
     index: number,
     uiElementIds: string[]
@@ -94,20 +90,39 @@ export const createUploadStateHandlers = (
         ...updated[index],
         uiElementIds
       };
+      
+      // Check if this is the last screenshot
+      if (index === updated.length - 1) {
+        // Move to final step if all screenshots are tagged
+        setStep(5);
+      } else {
+        // Move to next screenshot
+        setCurrentScreenshotIndex(index + 1);
+      }
+      
       return updated;
     });
     
-    // Fixed bug: Ensure we check against screenshots.length - 1
-    setScreenshots(screenshots => {
-      if (index === screenshots.length - 1) {
-        setStep(5);
-      } else {
-        setCurrentScreenshotIndex(prev => prev + 1);
-        setTagStep('category');
-      }
-      return screenshots;
-    });
+    setUploadInProgress();
+  };
+
+  // Handler to add more screenshots to the same category
+  const handleAddMoreScreenshots = (newScreenshots: UploadScreenshot[], categoryId: string) => {
+    // Assign the selected category to all new screenshots
+    const screenshotsWithCategory = newScreenshots.map(screenshot => ({
+      ...screenshot,
+      screenCategoryId: categoryId
+    }));
     
+    setScreenshots(prevScreenshots => [...prevScreenshots, ...screenshotsWithCategory]);
+    setCurrentScreenshotIndex(prevScreenshots => prevScreenshots.length);
+    setUploadInProgress();
+  };
+
+  // Handler to change category and upload more screenshots
+  const handleChangeCategory = () => {
+    setSelectedCategory(null);
+    setStep(3);
     setUploadInProgress();
   };
 
@@ -117,8 +132,10 @@ export const createUploadStateHandlers = (
     handlePrevStep,
     handleAppLinkSubmit,
     handleAppMetadataConfirm,
+    handleCategorySelect,
     handleScreenshotsUpload,
-    handleScreenshotCategorySelect,
-    handleScreenshotElementsSelect
+    handleScreenshotElementsSelect,
+    handleAddMoreScreenshots,
+    handleChangeCategory
   };
 };

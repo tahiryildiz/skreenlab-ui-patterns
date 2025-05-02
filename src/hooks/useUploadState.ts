@@ -19,6 +19,7 @@ export function useUploadState() {
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagStep, setTagStep] = useState<TagStep>('category');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
   // Refs for state management
   const hasRestoredStateRef = useRef(false);
@@ -42,6 +43,7 @@ export function useUploadState() {
     setScreenshots([]);
     setCurrentScreenshotIndex(0);
     setTagStep('category');
+    setSelectedCategory(null);
     clearUploadStateFromStorage();
     hasRestoredStateRef.current = false;
     hasInitializedRef.current = false;
@@ -109,7 +111,8 @@ export function useUploadState() {
         heroVideos, 
         screenshots, 
         currentScreenshotIndex, 
-        tagStep 
+        tagStep,
+        selectedCategory 
       },
       stateLastSavedRef,
       isRestoringRef,
@@ -148,7 +151,7 @@ export function useUploadState() {
     if (mountedRef.current && step > 1 && hasInitializedRef.current) {
       saveState();
     }
-  }, [step, appStoreLink, appMetadata, heroImages, heroVideos, screenshots, currentScreenshotIndex, tagStep]);
+  }, [step, appStoreLink, appMetadata, heroImages, heroVideos, screenshots, currentScreenshotIndex, tagStep, selectedCategory]);
 
   // Setup handlers
   const handlers = createUploadStateHandlers(
@@ -160,6 +163,7 @@ export function useUploadState() {
     setScreenshots,
     setCurrentScreenshotIndex,
     setTagStep,
+    setSelectedCategory,
     clearUploadState
   );
 
@@ -175,14 +179,16 @@ export function useUploadState() {
     screenshots,
     currentScreenshotIndex,
     tagStep,
+    selectedCategory,
     progressPercentage,
     handleNextStep: handlers.handleNextStep,
     handlePrevStep: handlers.handlePrevStep,
     handleAppLinkSubmit: handlers.handleAppLinkSubmit,
     handleAppMetadataConfirm: handlers.handleAppMetadataConfirm,
+    handleCategorySelect: handlers.handleCategorySelect,
     handleScreenshotsUpload: handlers.handleScreenshotsUpload,
-    handleScreenshotCategorySelect: handlers.handleScreenshotCategorySelect,
     handleScreenshotElementsSelect: handlers.handleScreenshotElementsSelect,
+    handleChangeCategory: handlers.handleChangeCategory,
     clearUploadState
   };
 }

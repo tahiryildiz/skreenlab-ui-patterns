@@ -202,7 +202,30 @@ export const useAppMetadata = (appStoreLink: string) => {
       const isNewApp = typeof appData.id === 'string' && appData.id.includes('-');
       
       if (isNewApp) {
-        // Prepare data for insertion - FIXED: removed 'category' and used 'category_id'
+        // First, try to find a matching category in our app_categories table
+        let categoryId: string | null = null;
+        
+        if (appStoreDetails?.category) {
+          // Look for a matching category in our app_categories table
+          const { data: categoryData, error: categoryError } = await supabase
+            .from('app_categories')
+            .select('id')
+            .eq('app_store_category', appStoreDetails.category)
+            .maybeSingle();
+            
+          if (categoryError) {
+            console.log('Error fetching category:', categoryError);
+            // Continue without a category - non-critical error
+          } else if (categoryData) {
+            categoryId = categoryData.id;
+            console.log('Found matching category ID:', categoryId);
+          } else {
+            console.log('No matching category found for:', appStoreDetails.category);
+            // If needed, we could insert a new category here
+          }
+        }
+        
+        // Prepare data for insertion
         const appInsertData = {
           name: appData.name || 'Unknown App',
           icon_url: appData.icon_url || null,
@@ -212,8 +235,7 @@ export const useAppMetadata = (appStoreLink: string) => {
           description: appStoreDetails?.description || '',
           app_store_url: appStoreLink.includes('apple') ? appStoreLink : null,
           play_store_url: appStoreLink.includes('play.google.com') ? appStoreLink : null,
-          // Don't try to use 'category' directly - it's not in the database schema
-          // Instead, leave category_id as null (we can handle category mapping separately)
+          category_id: categoryId, // Link to the category table
           updated_at: new Date().toISOString()
         };
         

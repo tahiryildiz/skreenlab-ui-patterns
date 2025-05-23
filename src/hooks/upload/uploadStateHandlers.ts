@@ -14,7 +14,8 @@ export const createUploadStateHandlers = (
   setCurrentScreenshotIndex: (value: React.SetStateAction<number>) => void,
   setTagStep: (value: React.SetStateAction<TagStep>) => void,
   setSelectedCategory: (value: string | null) => void,
-  clearUploadState: () => void
+  clearUploadState: () => void,
+  selectedCategory: string | null // Add selectedCategory as parameter
 ) => {
   // Calculate progress percentage based on current step
   const progressPercentage = (step: number, screenshots: UploadScreenshot[]) => {
@@ -80,11 +81,15 @@ export const createUploadStateHandlers = (
     }));
     
     // Important: Accumulate screenshots rather than replacing them
-    setScreenshots(prevScreenshots => [...prevScreenshots, ...screenshotsWithCategory]);
-    
-    // Set current index to the length of previous screenshots
-    // This way we start tagging from the first new screenshot
-    setCurrentScreenshotIndex(prevScreenshots => prevScreenshots.length);
+    setScreenshots(prevScreenshots => {
+      const updatedScreenshots = [...prevScreenshots, ...screenshotsWithCategory];
+      
+      // Set current index to the length of previous screenshots
+      // This way we start tagging from the first new screenshot
+      setCurrentScreenshotIndex(prevScreenshots.length);
+      
+      return updatedScreenshots;
+    });
     
     setTagStep('elements');
     setUploadInProgress();

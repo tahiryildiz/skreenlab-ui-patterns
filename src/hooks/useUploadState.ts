@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { App } from '@/types';
@@ -153,7 +152,7 @@ export function useUploadState() {
     }
   }, [step, appStoreLink, appMetadata, heroImages, heroVideos, screenshots, currentScreenshotIndex, tagStep, selectedCategory]);
 
-  // Setup handlers
+  // Setup handlers - now pass selectedCategory as parameter
   const handlers = createUploadStateHandlers(
     setStep,
     setAppStoreLink,
@@ -164,7 +163,8 @@ export function useUploadState() {
     setCurrentScreenshotIndex,
     setTagStep,
     setSelectedCategory,
-    clearUploadState
+    clearUploadState,
+    selectedCategory // Pass selectedCategory as parameter
   );
 
   // Calculate progress percentage based on current step

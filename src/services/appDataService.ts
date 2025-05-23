@@ -42,6 +42,26 @@ export async function findExistingAppByStoreUrl(appStoreLink: string): Promise<A
 }
 
 /**
+ * Checks if an app exists in the database by bundle_id
+ */
+export async function findExistingAppByBundleId(bundleId: string): Promise<App | null> {
+  if (!bundleId) return null;
+  
+  const { data: existingAppData, error: dbError } = await supabase
+    .from('apps')
+    .select('*')
+    .eq('bundle_id', bundleId)
+    .maybeSingle();
+    
+  if (dbError) {
+    console.error('Database query error:', dbError);
+    throw new Error('Failed to check database for existing app by bundle_id');
+  }
+    
+  return existingAppData as unknown as App;
+}
+
+/**
  * Fetches app data from the store API via Supabase edge function
  */
 export async function fetchAppDataFromApi(appStoreLink: string) {
@@ -113,6 +133,15 @@ export async function saveApp(appData: App, appStoreLink: string, appStoreDetail
     // If app already exists in the database, just return it
     console.log('Using existing app:', appData);
     return appData;
+  }
+  
+  // Check if an app with this bundle_id already exists
+  if (appData.bundle_id) {
+    const existingApp = await findExistingAppByBundleId(appData.bundle_id);
+    if (existingApp) {
+      console.log('App with bundle_id already exists, returning existing app:', existingApp);
+      return existingApp;
+    }
   }
   
   // Get category ID if available

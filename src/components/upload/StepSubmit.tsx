@@ -65,7 +65,7 @@ const StepSubmit: React.FC<StepSubmitProps> = ({
           
           <div>
             <h3 className="font-medium mb-3">Screenshots</h3>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto p-1">
               {screenshots.map((screenshot, index) => (
                 <div key={index} className="relative rounded-lg overflow-hidden border aspect-square">
                   <img 

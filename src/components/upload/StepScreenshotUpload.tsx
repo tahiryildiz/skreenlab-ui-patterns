@@ -144,13 +144,43 @@ const StepScreenshotUpload: React.FC<StepScreenshotUploadProps> = ({
       return;
     }
 
+    // Important: Create actual File objects from serialized screenshots if needed
+    const completedScreenshots = screenshots.map(screenshot => {
+      if (screenshot.file instanceof File) {
+        return screenshot;
+      }
+      
+      // Create a new File object if we only have serialized data
+      // This is necessary if the screenshots were loaded from sessionStorage
+      try {
+        const { fileName, fileType, fileSize } = screenshot as any;
+        if (fileName && fileType) {
+          // Convert data URL to blob
+          const byteString = atob(screenshot.dataUrl.split(',')[1]);
+          const ab = new ArrayBuffer(byteString.length);
+          const ia = new Uint8Array(ab);
+          for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+          }
+          const blob = new Blob([ab], { type: fileType });
+          const file = new File([blob], fileName, { type: fileType });
+          
+          return {
+            ...screenshot,
+            file
+          };
+        }
+      } catch (error) {
+        console.error('Error recreating file object:', error);
+      }
+      
+      return screenshot;
+    });
+
     // Clear temp storage since we're moving to the next step
     sessionStorage.removeItem('tempScreenshots');
-    onUpload(screenshots);
+    onUpload(completedScreenshots);
   };
-
-  // Don't use beforeunload here - it would trigger when switching tabs
-  // Instead, rely on the sessionStorage to persist state
 
   return (
     <Card className="border-0 shadow-none">

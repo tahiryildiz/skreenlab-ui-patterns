@@ -93,6 +93,9 @@ export const createUploadStateHandlers = (
     
     setTagStep('elements');
     setUploadInProgress();
+    
+    // After uploading screenshots, move to step 5 (final review)
+    setStep(5);
   };
 
   // Screenshot handling

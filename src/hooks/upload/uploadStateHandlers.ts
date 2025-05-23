@@ -67,16 +67,25 @@ export const createUploadStateHandlers = (
     setUploadInProgress();
   };
 
-  const handleScreenshotsUpload = (newScreenshots: UploadScreenshot[], categoryId: string) => {
+  const handleScreenshotsUpload = (newScreenshots: UploadScreenshot[]) => {
+    if (!selectedCategory) {
+      console.error("No category selected for screenshots");
+      return;
+    }
+    
     // Assign the selected category to all new screenshots
     const screenshotsWithCategory = newScreenshots.map(screenshot => ({
       ...screenshot,
-      screenCategoryId: categoryId
+      screenCategoryId: selectedCategory
     }));
     
+    // Important: Accumulate screenshots rather than replacing them
     setScreenshots(prevScreenshots => [...prevScreenshots, ...screenshotsWithCategory]);
-    // Fix: Don't try to access .length on prevScreenshots which is a number in this context
-    setCurrentScreenshotIndex(prevScreenshotsLength => prevScreenshotsLength);
+    
+    // Set current index to the length of previous screenshots
+    // This way we start tagging from the first new screenshot
+    setCurrentScreenshotIndex(prevScreenshots => prevScreenshots.length);
+    
     setTagStep('elements');
     setUploadInProgress();
   };
@@ -88,10 +97,12 @@ export const createUploadStateHandlers = (
   ) => {
     setScreenshots(prev => {
       const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        uiElementIds
-      };
+      if (index >= 0 && index < updated.length) {
+        updated[index] = {
+          ...updated[index],
+          uiElementIds
+        };
+      }
       
       // Check if this is the last screenshot
       if (index === updated.length - 1) {
@@ -105,23 +116,6 @@ export const createUploadStateHandlers = (
       return updated;
     });
     
-    setUploadInProgress();
-  };
-
-  // Handler to add more screenshots to the same category
-  const handleAddMoreScreenshots = (newScreenshots: UploadScreenshot[], categoryId: string) => {
-    // Assign the selected category to all new screenshots
-    const screenshotsWithCategory = newScreenshots.map(screenshot => ({
-      ...screenshot,
-      screenCategoryId: categoryId
-    }));
-    
-    setScreenshots(prevScreenshots => [...prevScreenshots, ...screenshotsWithCategory]);
-    // Fix: Don't try to access .length on prevScreenshots which is a number in this context
-    setCurrentScreenshotIndex(prevScreenshotsLength => {
-      // Get the new index by accessing the updated screenshots length
-      return prevScreenshotsLength;
-    });
     setUploadInProgress();
   };
 
@@ -141,7 +135,6 @@ export const createUploadStateHandlers = (
     handleCategorySelect,
     handleScreenshotsUpload,
     handleScreenshotElementsSelect,
-    handleAddMoreScreenshots,
     handleChangeCategory
   };
 };

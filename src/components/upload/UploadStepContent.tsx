@@ -22,7 +22,7 @@ interface UploadStepContentProps {
   onAppLinkSubmit: (link: string) => void;
   onAppMetadataConfirm: (app: App, heroImages?: string[], heroVideos?: string[]) => void;
   onCategorySelect: (categoryId: string) => void;
-  onScreenshotsUpload: (newScreenshots: UploadScreenshot[], categoryId: string) => void;
+  onScreenshotsUpload: (newScreenshots: UploadScreenshot[]) => void;
   onScreenshotElementsSelect: (index: number, uiElementIds: string[]) => void;
   onChangeCategory: () => void;
   onSubmit: () => void;

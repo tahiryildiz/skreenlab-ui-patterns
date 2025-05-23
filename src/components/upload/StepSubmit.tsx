@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -100,7 +101,7 @@ const StepSubmit: React.FC<StepSubmitProps> = ({
               <Button 
                 onClick={onSubmit}
                 className="flex-1"
-                disabled={isSubmitting || getTaggedCount() < screenshots.length}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
